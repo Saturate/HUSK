@@ -1,0 +1,5 @@
+{
+	"name": "yams",
+	"private": true,
+	"workspaces": ["server", "plugins/*"]
+}

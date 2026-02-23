@@ -1,0 +1,20 @@
+{
+	"name": "@yams/server",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "bun run --hot src/index.ts",
+		"start": "bun run src/index.ts",
+		"build:ui": "cd ui && bun install && bun run build",
+		"test": "bun test",
+		"check": "biome check ."
+	},
+	"dependencies": {
+		"hono": "^4.7.5",
+		"jose": "^6.0.11"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
+		"@types/bun": "^1.2.4"
+	}
+}
