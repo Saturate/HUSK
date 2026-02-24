@@ -1,0 +1,76 @@
+import { QdrantClient } from "@qdrant/js-client-rest";
+
+const COLLECTION_NAME = "yams_memories";
+
+let client: QdrantClient | null = null;
+
+export function getQdrantClient(): QdrantClient {
+	if (!client) {
+		throw new Error("Qdrant not initialized — call initQdrant() first");
+	}
+	return client;
+}
+
+export async function initQdrant(dimensions?: number): Promise<void> {
+	const url = process.env.QDRANT_URL ?? "http://localhost:6333";
+	client = new QdrantClient({ url });
+
+	const dims = dimensions ?? (Number(process.env.EMBEDDING_DIMENSIONS) || 768);
+
+	const collections = await client.getCollections();
+	const exists = collections.collections.some((c) => c.name === COLLECTION_NAME);
+
+	if (!exists) {
+		await client.createCollection(COLLECTION_NAME, {
+			vectors: { size: dims, distance: "Cosine" },
+		});
+		console.log(`Created Qdrant collection "${COLLECTION_NAME}" (${dims} dimensions)`);
+	}
+}
+
+export interface MemoryPayload {
+	memory_id: string;
+	git_remote: string | null;
+	scope: string;
+	api_key_label: string;
+	created_at: string;
+}
+
+export async function upsertMemory(
+	id: string,
+	vector: number[],
+	payload: MemoryPayload,
+): Promise<void> {
+	const qdrant = getQdrantClient();
+	await qdrant.upsert(COLLECTION_NAME, {
+		points: [{ id, vector, payload }],
+	});
+}
+
+export interface MemoryFilter {
+	git_remote?: string;
+	scope?: string;
+}
+
+export async function searchMemories(vector: number[], filter?: MemoryFilter, limit = 10) {
+	const qdrant = getQdrantClient();
+
+	const must: Array<{ key: string; match: { value: string } }> = [];
+	if (filter?.git_remote) {
+		must.push({ key: "git_remote", match: { value: filter.git_remote } });
+	}
+	if (filter?.scope) {
+		must.push({ key: "scope", match: { value: filter.scope } });
+	}
+
+	return qdrant.search(COLLECTION_NAME, {
+		vector,
+		limit,
+		filter: must.length > 0 ? { must } : undefined,
+		with_payload: true,
+	});
+}
+
+export function setQdrantClient(c: QdrantClient | null) {
+	client = c;
+}

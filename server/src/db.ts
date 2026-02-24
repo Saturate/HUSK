@@ -58,6 +58,20 @@ export function initDb(path?: string): Database {
 		)
 	`);
 
+	db.run(`
+		CREATE TABLE IF NOT EXISTS memories (
+			id TEXT PRIMARY KEY,
+			api_key_id TEXT NOT NULL REFERENCES api_keys(id),
+			git_remote TEXT,
+			scope TEXT NOT NULL DEFAULT 'session',
+			summary TEXT NOT NULL,
+			metadata TEXT,
+			created_at TEXT NOT NULL DEFAULT (datetime('now'))
+		)
+	`);
+	db.run("CREATE INDEX IF NOT EXISTS idx_memories_git_remote ON memories(git_remote)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope)");
+
 	return db;
 }
 
@@ -137,6 +151,80 @@ export function revokeApiKey(id: string): boolean {
 
 export function updateKeyLastUsed(id: string) {
 	db.query("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?").run(id);
+}
+
+// --- Memories ---
+
+export interface MemoryRow {
+	id: string;
+	api_key_id: string;
+	git_remote: string | null;
+	scope: string;
+	summary: string;
+	metadata: string | null;
+	created_at: string;
+}
+
+export function createMemory(params: {
+	id: string;
+	apiKeyId: string;
+	gitRemote?: string | null;
+	scope: string;
+	summary: string;
+	metadata?: string | null;
+}): string {
+	db.query(
+		"INSERT INTO memories (id, api_key_id, git_remote, scope, summary, metadata) VALUES (?, ?, ?, ?, ?, ?)",
+	).run(
+		params.id,
+		params.apiKeyId,
+		params.gitRemote ?? null,
+		params.scope,
+		params.summary,
+		params.metadata ?? null,
+	);
+	return params.id;
+}
+
+export function getMemory(id: string): MemoryRow | undefined {
+	return db.query<MemoryRow, [string]>("SELECT * FROM memories WHERE id = ?").get(id) ?? undefined;
+}
+
+export function listMemories(opts?: {
+	gitRemote?: string;
+	scope?: string;
+	limit?: number;
+	offset?: number;
+}): MemoryRow[] {
+	const conditions: string[] = [];
+	const params: (string | number)[] = [];
+
+	if (opts?.gitRemote) {
+		conditions.push("git_remote = ?");
+		params.push(opts.gitRemote);
+	}
+	if (opts?.scope) {
+		conditions.push("scope = ?");
+		params.push(opts.scope);
+	}
+
+	let sql = "SELECT * FROM memories";
+	if (conditions.length > 0) {
+		sql += ` WHERE ${conditions.join(" AND ")}`;
+	}
+	sql += " ORDER BY created_at DESC";
+
+	const limit = opts?.limit ?? 100;
+	const offset = opts?.offset ?? 0;
+	sql += " LIMIT ? OFFSET ?";
+	params.push(limit, offset);
+
+	return db.query<MemoryRow, (string | number)[]>(sql).all(...params);
+}
+
+export function countMemories(): number {
+	const row = db.query<{ count: number }, []>("SELECT COUNT(*) as count FROM memories").get();
+	return row?.count ?? 0;
 }
 
 // --- JWT Secret ---

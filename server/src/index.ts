@@ -1,5 +1,7 @@
 import { app } from "./app.js";
 import { getUserCount, initDb } from "./db.js";
+import { checkOllamaModel } from "./embeddings.js";
+import { initQdrant } from "./qdrant.js";
 
 initDb();
 
@@ -12,6 +14,14 @@ if (userCount === 0) {
 } else {
 	console.log("Ready (%d user(s) configured)", userCount);
 }
+
+initQdrant()
+	.then(() => console.log("Qdrant connected"))
+	.catch((err) =>
+		console.log("Qdrant not available — ingest will fail until it's running:", err.message),
+	);
+
+checkOllamaModel();
 
 export default {
 	port,

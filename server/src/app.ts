@@ -1,7 +1,8 @@
 import { Hono } from "hono";
-import { logger } from "hono/logger";
 import { serveStatic } from "hono/bun";
+import { logger } from "hono/logger";
 import { auth, keys } from "./auth.js";
+import { ingest } from "./ingest.js";
 import { setup, setupGuard } from "./setup.js";
 
 const app = new Hono();
@@ -15,7 +16,7 @@ app.route("/setup", setup);
 app.route("/api/auth", auth);
 app.route("/api/keys", keys);
 
-app.all("/ingest", (c) => c.json({ error: "Not implemented." }, 501));
+app.route("/ingest", ingest);
 app.all("/mcp", (c) => c.json({ error: "Not implemented." }, 501));
 
 // Serve built UI static assets
