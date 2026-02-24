@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"yams": {
+			"type": "http",
+			"url": "${YAMS_URL}/mcp",
+			"headers": {
+				"Authorization": "Bearer ${YAMS_KEY}"
+			}
+		}
+	}
+}
