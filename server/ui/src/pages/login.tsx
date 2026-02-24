@@ -4,7 +4,8 @@ import { AuthLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { type FormEvent, useState } from "react";
+import { randomBackronym } from "@/yams";
+import { type FormEvent, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 export function LoginPage() {
@@ -15,6 +16,7 @@ export function LoginPage() {
 	const [loading, setLoading] = useState(false);
 
 	const showSetupSuccess = searchParams.get("setup") === "success";
+	const acronym = useMemo(() => randomBackronym(), []);
 
 	async function handleSubmit(e: FormEvent<HTMLFormElement>) {
 		e.preventDefault();
@@ -26,9 +28,9 @@ export function LoginPage() {
 		const password = form.get("password") as string;
 
 		try {
-			const { token } = await api.login(username, password);
-			login(token);
-			navigate("/keys");
+			await api.login(username, password);
+			login();
+			navigate("/dashboard");
 		} catch (err) {
 			if (err instanceof ApiError) {
 				setError(err.message);
@@ -41,7 +43,7 @@ export function LoginPage() {
 	}
 
 	return (
-		<AuthLayout title="YAMS" description="Sign in to manage your API keys.">
+		<AuthLayout title="YAMS" description={acronym}>
 			{showSetupSuccess && (
 				<div className="mb-4 rounded-md border border-green-800 bg-green-950 px-3 py-2 text-sm text-green-400">
 					Admin account created. Sign in to continue.

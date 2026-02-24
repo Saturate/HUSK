@@ -1,5 +1,6 @@
 import type { Context, Next } from "hono";
 import { Hono } from "hono";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { SignJWT, jwtVerify } from "jose";
 import {
 	createApiKey,
@@ -12,6 +13,8 @@ import {
 	updateKeyLastUsed,
 } from "./db.js";
 
+const COOKIE_NAME = "yams_session";
+
 function getSecretKey(): Uint8Array {
 	const secret = getOrCreateJwtSecret();
 	return new TextEncoder().encode(secret);
@@ -20,15 +23,12 @@ function getSecretKey(): Uint8Array {
 // --- JWT middleware ---
 
 export async function jwtMiddleware(c: Context, next: Next) {
+	// Check cookie first, then Authorization header
+	const cookieToken = getCookie(c, COOKIE_NAME);
 	const header = c.req.header("Authorization");
-	if (!header?.startsWith("Bearer ")) {
-		return c.json({ error: "Authorization required." }, 401);
-	}
+	const token = cookieToken ?? (header?.startsWith("Bearer ") ? header.slice(7) : undefined);
 
-	const token = header.slice(7);
-
-	// Don't treat API keys as JWTs
-	if (token.startsWith("yams_")) {
+	if (!token || token.startsWith("yams_")) {
 		return c.json({ error: "Authorization required." }, 401);
 	}
 
@@ -130,7 +130,25 @@ auth.post("/login", async (c) => {
 		.setExpirationTime("24h")
 		.sign(getSecretKey());
 
-	return c.json({ token });
+	setCookie(c, COOKIE_NAME, token, {
+		httpOnly: true,
+		sameSite: "Strict",
+		path: "/",
+		maxAge: 60 * 60 * 24,
+	});
+
+	return c.json({ username: user.username });
+});
+
+auth.post("/logout", (c) => {
+	deleteCookie(c, COOKIE_NAME, { path: "/" });
+	return c.json({ ok: true });
+});
+
+auth.get("/me", jwtMiddleware, (c) => {
+	return c.json({
+		username: c.get("username"),
+	});
 });
 
 // --- Key management routes (JWT-protected) ---

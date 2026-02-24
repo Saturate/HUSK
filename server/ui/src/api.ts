@@ -21,6 +21,7 @@ export class SetupRequiredError extends ApiError {
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 	const res = await fetch(path, {
+		credentials: "same-origin",
 		...options,
 		headers: {
 			"Content-Type": "application/json",
@@ -46,7 +47,7 @@ export interface SetupResponse {
 }
 
 export interface LoginResponse {
-	token: string;
+	username: string;
 }
 
 export interface ApiKey {
@@ -88,6 +89,26 @@ export interface StatsResponse {
 	projects: number;
 }
 
+export interface FiltersResponse {
+	projects: string[];
+	scopes: string[];
+}
+
+export interface SearchResult {
+	score: number;
+	id: string;
+	api_key_id: string;
+	git_remote: string | null;
+	scope: string;
+	summary: string;
+	metadata: string | null;
+	created_at: string;
+}
+
+export interface SearchResponse {
+	results: SearchResult[];
+}
+
 export const api = {
 	setup(username: string, password: string) {
 		return request<SetupResponse>("/setup", {
@@ -103,59 +124,70 @@ export const api = {
 		});
 	},
 
-	listKeys(token: string) {
-		return request<ApiKey[]>("/api/keys", {
-			headers: { Authorization: `Bearer ${token}` },
+	logout() {
+		return request<{ ok: true }>("/api/auth/logout", {
+			method: "POST",
 		});
 	},
 
-	createKey(token: string, label: string, expiresInDays?: number) {
+	me() {
+		return request<{ username: string }>("/api/auth/me");
+	},
+
+	listKeys() {
+		return request<ApiKey[]>("/api/keys");
+	},
+
+	createKey(label: string, expiresInDays?: number) {
 		const body: { label: string; expires_in?: number } = { label };
 		if (expiresInDays != null) {
 			body.expires_in = expiresInDays * 86400;
 		}
 		return request<CreateKeyResponse>("/api/keys", {
 			method: "POST",
-			headers: { Authorization: `Bearer ${token}` },
 			body: JSON.stringify(body),
 		});
 	},
 
-	revokeKey(token: string, id: string) {
+	revokeKey(id: string) {
 		return request<{ id: string; revoked: true }>(`/api/keys/${encodeURIComponent(id)}`, {
 			method: "DELETE",
-			headers: { Authorization: `Bearer ${token}` },
 		});
 	},
 
-	getStats(token: string) {
-		return request<StatsResponse>("/api/admin/stats", {
-			headers: { Authorization: `Bearer ${token}` },
-		});
+	getStats() {
+		return request<StatsResponse>("/api/admin/stats");
 	},
 
-	listMemories(
-		token: string,
-		opts?: { git_remote?: string; scope?: string; limit?: number; offset?: number },
-	) {
+	getFilters() {
+		return request<FiltersResponse>("/api/admin/filters");
+	},
+
+	listMemories(opts?: {
+		git_remote?: string;
+		scope?: string;
+		limit?: number;
+		offset?: number;
+	}) {
 		const params = new URLSearchParams();
 		if (opts?.git_remote) params.set("git_remote", opts.git_remote);
 		if (opts?.scope) params.set("scope", opts.scope);
 		if (opts?.limit) params.set("limit", String(opts.limit));
 		if (opts?.offset) params.set("offset", String(opts.offset));
 		const qs = params.toString();
-		return request<MemoriesResponse>(`/api/admin/memories${qs ? `?${qs}` : ""}`, {
-			headers: { Authorization: `Bearer ${token}` },
+		return request<MemoriesResponse>(`/api/admin/memories${qs ? `?${qs}` : ""}`);
+	},
+
+	searchMemories(query: string, opts?: { git_remote?: string; scope?: string; limit?: number }) {
+		return request<SearchResponse>("/api/admin/search", {
+			method: "POST",
+			body: JSON.stringify({ query, ...opts }),
 		});
 	},
 
-	deleteMemory(token: string, id: string) {
-		return request<{ id: string; deleted: true }>(
-			`/api/admin/memories/${encodeURIComponent(id)}`,
-			{
-				method: "DELETE",
-				headers: { Authorization: `Bearer ${token}` },
-			},
-		);
+	deleteMemory(id: string) {
+		return request<{ id: string; deleted: true }>(`/api/admin/memories/${encodeURIComponent(id)}`, {
+			method: "DELETE",
+		});
 	},
 };

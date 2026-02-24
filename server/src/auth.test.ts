@@ -12,9 +12,10 @@ describe("auth", () => {
 			body: JSON.stringify({ username: "admin", password: "password123" }),
 		});
 		expect(res.status).toBe(200);
-		const body = await res.json<{ token: string }>();
-		expect(body.token).toBeDefined();
-		expect(typeof body.token).toBe("string");
+		const body = await res.json<{ username: string }>();
+		expect(body.username).toBe("admin");
+		const cookie = res.headers.get("set-cookie") ?? "";
+		expect(cookie).toContain("yams_session=");
 	});
 
 	test("login fails with wrong password", async () => {

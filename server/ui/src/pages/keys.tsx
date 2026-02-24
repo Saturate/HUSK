@@ -23,10 +23,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { useApi } from "@/hooks/use-api";
 import { relativeTime } from "@/lib/utils";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, KeyRound, Plus, Trash2 } from "lucide-react";
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 
 function keyStatus(key: ApiKey): {
 	label: string;
@@ -40,61 +40,39 @@ function keyStatus(key: ApiKey): {
 }
 
 export function KeysPage() {
-	const { call } = useApi();
-	const [keys, setKeys] = useState<ApiKey[]>([]);
-	const [loading, setLoading] = useState(true);
+	const queryClient = useQueryClient();
 
 	const [createOpen, setCreateOpen] = useState(false);
-	const [createError, setCreateError] = useState("");
-	const [creating, setCreating] = useState(false);
-
 	const [createdKey, setCreatedKey] = useState<CreateKeyResponse | null>(null);
 	const [copied, setCopied] = useState(false);
 
-	const fetchKeys = useCallback(async () => {
-		try {
-			const data = await call((t) => api.listKeys(t));
-			setKeys(data);
-		} catch {
-			// handled by useApi (redirects on 401/503)
-		} finally {
-			setLoading(false);
-		}
-	}, [call]);
+	const keysQuery = useQuery({
+		queryKey: ["keys"],
+		queryFn: () => api.listKeys(),
+	});
 
-	useEffect(() => {
-		fetchKeys();
-	}, [fetchKeys]);
+	const createMutation = useMutation({
+		mutationFn: (params: { label: string; days?: number }) =>
+			api.createKey(params.label, params.days),
+		onSuccess: (result) => {
+			setCreatedKey(result);
+			setCreateOpen(false);
+			queryClient.invalidateQueries({ queryKey: ["keys"] });
+		},
+	});
 
-	async function handleCreate(e: FormEvent<HTMLFormElement>) {
+	const revokeMutation = useMutation({
+		mutationFn: (id: string) => api.revokeKey(id),
+		onSuccess: () => queryClient.invalidateQueries({ queryKey: ["keys"] }),
+	});
+
+	function handleCreate(e: FormEvent<HTMLFormElement>) {
 		e.preventDefault();
-		setCreateError("");
-		setCreating(true);
-
 		const form = new FormData(e.currentTarget);
 		const label = (form.get("label") as string).trim();
 		const daysStr = (form.get("expires") as string).trim();
 		const days = daysStr ? Number(daysStr) : undefined;
-
-		try {
-			const result = await call((t) => api.createKey(t, label, days));
-			setCreatedKey(result);
-			setCreateOpen(false);
-			fetchKeys();
-		} catch (err) {
-			if (err instanceof Error) setCreateError(err.message);
-		} finally {
-			setCreating(false);
-		}
-	}
-
-	async function handleRevoke(id: string) {
-		try {
-			await call((t) => api.revokeKey(t, id));
-			fetchKeys();
-		} catch {
-			// handled by useApi
-		}
+		createMutation.mutate({ label, days });
 	}
 
 	async function handleCopy(text: string) {
@@ -102,6 +80,8 @@ export function KeysPage() {
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	}
+
+	const keys = keysQuery.data ?? [];
 
 	return (
 		<AppLayout>
@@ -135,15 +115,19 @@ export function KeysPage() {
 									placeholder="Leave empty for no expiration"
 								/>
 							</div>
-							{createError && <p className="text-sm text-destructive-foreground">{createError}</p>}
+							{createMutation.isError && (
+								<p className="text-sm text-destructive-foreground">
+									{createMutation.error.message}
+								</p>
+							)}
 							<DialogFooter>
 								<DialogClose asChild>
 									<Button type="button" variant="outline">
 										Cancel
 									</Button>
 								</DialogClose>
-								<Button type="submit" disabled={creating}>
-									{creating ? "Creating..." : "Create"}
+								<Button type="submit" disabled={createMutation.isPending}>
+									{createMutation.isPending ? "Creating..." : "Create"}
 								</Button>
 							</DialogFooter>
 						</form>
@@ -177,7 +161,7 @@ export function KeysPage() {
 				</DialogContent>
 			</Dialog>
 
-			{loading ? (
+			{keysQuery.isLoading ? (
 				<p className="text-sm text-muted-foreground">Loading...</p>
 			) : keys.length === 0 ? (
 				<div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
@@ -224,7 +208,12 @@ export function KeysPage() {
 									</TableCell>
 									<TableCell>
 										{key.is_active && (
-											<Button size="icon" variant="ghost" onClick={() => handleRevoke(key.id)}>
+											<Button
+												size="icon"
+												variant="ghost"
+												disabled={revokeMutation.isPending}
+												onClick={() => revokeMutation.mutate(key.id)}
+											>
 												<Trash2 className="h-4 w-4" />
 											</Button>
 										)}

@@ -1,9 +1,14 @@
-import type { Memory } from "@/api";
 import { api } from "@/api";
 import { AppLayout } from "@/components/layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {
 	Table,
 	TableBody,
@@ -12,74 +17,67 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { useApi } from "@/hooks/use-api";
 import { relativeTime } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Search, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 const PAGE_SIZE = 20;
+const ALL = "__all__";
 
 export function MemoriesPage() {
-	const { call } = useApi();
-	const [memories, setMemories] = useState<Memory[]>([]);
-	const [total, setTotal] = useState(0);
-	const [loading, setLoading] = useState(true);
+	const queryClient = useQueryClient();
 	const [page, setPage] = useState(0);
+	const [selectedRemote, setSelectedRemote] = useState(ALL);
+	const [selectedScope, setSelectedScope] = useState(ALL);
 
-	const [filterRemote, setFilterRemote] = useState("");
-	const [filterScope, setFilterScope] = useState("");
-	const [appliedRemote, setAppliedRemote] = useState("");
-	const [appliedScope, setAppliedScope] = useState("");
+	const filtersQuery = useQuery({
+		queryKey: ["filters"],
+		queryFn: () => api.getFilters(),
+	});
 
-	const fetchMemories = useCallback(async () => {
-		setLoading(true);
-		try {
-			const data = await call((t) =>
-				api.listMemories(t, {
-					git_remote: appliedRemote || undefined,
-					scope: appliedScope || undefined,
-					limit: PAGE_SIZE,
-					offset: page * PAGE_SIZE,
-				}),
-			);
-			setMemories(data.memories);
-			setTotal(data.total);
-		} catch {
-			// handled by useApi
-		} finally {
-			setLoading(false);
-		}
-	}, [call, appliedRemote, appliedScope, page]);
+	const memoriesQuery = useQuery({
+		queryKey: ["memories", "list", selectedRemote, selectedScope, page],
+		queryFn: () =>
+			api.listMemories({
+				git_remote: selectedRemote !== ALL ? selectedRemote : undefined,
+				scope: selectedScope !== ALL ? selectedScope : undefined,
+				limit: PAGE_SIZE,
+				offset: page * PAGE_SIZE,
+			}),
+	});
 
-	useEffect(() => {
-		fetchMemories();
-	}, [fetchMemories]);
+	const deleteMutation = useMutation({
+		mutationFn: (id: string) => api.deleteMemory(id),
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["memories"] });
+			queryClient.invalidateQueries({ queryKey: ["stats"] });
+			queryClient.invalidateQueries({ queryKey: ["filters"] });
+		},
+	});
 
-	function applyFilters() {
-		setAppliedRemote(filterRemote.trim());
-		setAppliedScope(filterScope.trim());
+	function handleRemoteChange(value: string) {
+		setSelectedRemote(value);
+		setPage(0);
+	}
+
+	function handleScopeChange(value: string) {
+		setSelectedScope(value);
 		setPage(0);
 	}
 
 	function clearFilters() {
-		setFilterRemote("");
-		setFilterScope("");
-		setAppliedRemote("");
-		setAppliedScope("");
+		setSelectedRemote(ALL);
+		setSelectedScope(ALL);
 		setPage(0);
 	}
 
-	async function handleDelete(id: string) {
-		try {
-			await call((t) => api.deleteMemory(t, id));
-			fetchMemories();
-		} catch {
-			// handled by useApi
-		}
-	}
-
+	const projects = filtersQuery.data?.projects ?? [];
+	const scopes = filtersQuery.data?.scopes ?? [];
+	const memories = memoriesQuery.data?.memories ?? [];
+	const total = memoriesQuery.data?.total ?? 0;
 	const totalPages = Math.ceil(total / PAGE_SIZE);
-	const hasFilters = appliedRemote || appliedScope;
+	const hasFilters = selectedRemote !== ALL || selectedScope !== ALL;
 
 	return (
 		<AppLayout>
@@ -87,45 +85,41 @@ export function MemoriesPage() {
 
 			<div className="mb-4 flex flex-wrap items-end gap-3">
 				<div className="space-y-1">
-					<label
-						htmlFor="filter-remote"
-						className="text-xs text-muted-foreground"
-					>
-						Project (git remote)
-					</label>
-					<Input
-						id="filter-remote"
-						placeholder="e.g. github.com/org/repo"
-						value={filterRemote}
-						onChange={(e) => setFilterRemote(e.target.value)}
-						className="w-64"
-					/>
+					{/* biome-ignore lint/a11y/noLabelWithoutControl: Radix Select handles a11y */}
+					<label className="text-xs text-muted-foreground">Project</label>
+					<Select value={selectedRemote} onValueChange={handleRemoteChange}>
+						<SelectTrigger className="w-64">
+							<SelectValue placeholder="All projects" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={ALL}>All projects</SelectItem>
+							{projects.map((p) => (
+								<SelectItem key={p} value={p}>
+									{p}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
 				<div className="space-y-1">
-					<label
-						htmlFor="filter-scope"
-						className="text-xs text-muted-foreground"
-					>
-						Scope
-					</label>
-					<Input
-						id="filter-scope"
-						placeholder="session, project, global"
-						value={filterScope}
-						onChange={(e) => setFilterScope(e.target.value)}
-						className="w-40"
-					/>
+					{/* biome-ignore lint/a11y/noLabelWithoutControl: Radix Select handles a11y */}
+					<label className="text-xs text-muted-foreground">Scope</label>
+					<Select value={selectedScope} onValueChange={handleScopeChange}>
+						<SelectTrigger className="w-40">
+							<SelectValue placeholder="All scopes" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value={ALL}>All scopes</SelectItem>
+							{scopes.map((s) => (
+								<SelectItem key={s} value={s}>
+									{s}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
 				</div>
-				<Button size="sm" onClick={applyFilters}>
-					<Search className="mr-1 h-4 w-4" />
-					Filter
-				</Button>
 				{hasFilters && (
-					<Button
-						size="sm"
-						variant="ghost"
-						onClick={clearFilters}
-					>
+					<Button size="sm" variant="ghost" onClick={clearFilters}>
 						Clear
 					</Button>
 				)}
@@ -134,14 +128,12 @@ export function MemoriesPage() {
 				</p>
 			</div>
 
-			{loading ? (
+			{memoriesQuery.isLoading ? (
 				<p className="text-sm text-muted-foreground">Loading...</p>
 			) : memories.length === 0 ? (
 				<div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
 					<p className="text-sm text-muted-foreground">
-						{hasFilters
-							? "No memories match the current filters."
-							: "No memories stored yet."}
+						{hasFilters ? "No memories match the current filters." : "No memories stored yet."}
 					</p>
 				</div>
 			) : (
@@ -149,9 +141,7 @@ export function MemoriesPage() {
 					<Table>
 						<TableHeader>
 							<TableRow>
-								<TableHead className="w-[40%]">
-									Summary
-								</TableHead>
+								<TableHead className="w-[40%]">Summary</TableHead>
 								<TableHead>Project</TableHead>
 								<TableHead>Scope</TableHead>
 								<TableHead>Created</TableHead>
@@ -161,16 +151,12 @@ export function MemoriesPage() {
 						<TableBody>
 							{memories.map((m) => (
 								<TableRow key={m.id}>
-									<TableCell className="font-medium">
-										{m.summary}
-									</TableCell>
+									<TableCell className="font-medium">{m.summary}</TableCell>
 									<TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-										{m.git_remote ?? "—"}
+										{m.git_remote ?? "\u2014"}
 									</TableCell>
 									<TableCell>
-										<Badge variant="secondary">
-											{m.scope}
-										</Badge>
+										<Badge variant="secondary">{m.scope}</Badge>
 									</TableCell>
 									<TableCell className="text-sm text-muted-foreground">
 										{relativeTime(m.created_at)}
@@ -179,9 +165,8 @@ export function MemoriesPage() {
 										<Button
 											size="icon"
 											variant="ghost"
-											onClick={() =>
-												handleDelete(m.id)
-											}
+											disabled={deleteMutation.isPending}
+											onClick={() => deleteMutation.mutate(m.id)}
 										>
 											<Trash2 className="h-4 w-4" />
 										</Button>

@@ -236,8 +236,35 @@ export function listDistinctGitRemotes(): string[] {
 	return rows.map((r) => r.git_remote);
 }
 
-export function countMemories(): number {
-	const row = db.query<{ count: number }, []>("SELECT COUNT(*) as count FROM memories").get();
+export function listDistinctScopes(): string[] {
+	const rows = db
+		.query<{ scope: string }, []>("SELECT DISTINCT scope FROM memories ORDER BY scope")
+		.all();
+	return rows.map((r) => r.scope);
+}
+
+export function countMemories(opts?: {
+	gitRemote?: string;
+	scope?: string;
+}): number {
+	const conditions: string[] = [];
+	const params: string[] = [];
+
+	if (opts?.gitRemote) {
+		conditions.push("git_remote = ?");
+		params.push(opts.gitRemote);
+	}
+	if (opts?.scope) {
+		conditions.push("scope = ?");
+		params.push(opts.scope);
+	}
+
+	let sql = "SELECT COUNT(*) as count FROM memories";
+	if (conditions.length > 0) {
+		sql += ` WHERE ${conditions.join(" AND ")}`;
+	}
+
+	const row = db.query<{ count: number }, string[]>(sql).get(...params);
 	return row?.count ?? 0;
 }
 

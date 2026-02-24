@@ -1,14 +1,9 @@
 import { useAuth } from "@/auth-context";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import type { ReactNode } from "react";
+import { randomBackronym } from "@/yams";
+import { type ReactNode, useMemo } from "react";
 import { Link, useLocation } from "react-router";
 
 export function AuthLayout({
@@ -37,17 +32,21 @@ const NAV_ITEMS = [
 	{ to: "/dashboard", label: "Dashboard" },
 	{ to: "/keys", label: "API Keys" },
 	{ to: "/memories", label: "Memories" },
+	{ to: "/settings", label: "Settings" },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
 	const { logout } = useAuth();
 	const { pathname } = useLocation();
+	const acronym = useMemo(() => randomBackronym(), []);
 
 	return (
 		<div className="min-h-svh">
 			<header className="border-b">
 				<div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
-					<h1 className="text-lg font-semibold">YAMS</h1>
+					<h1 className="text-lg font-semibold" title={acronym}>
+						YAMS
+					</h1>
 					<nav className="flex gap-1">
 						{NAV_ITEMS.map((item) => (
 							<Button
@@ -55,28 +54,20 @@ export function AppLayout({ children }: { children: ReactNode }) {
 								variant="ghost"
 								size="sm"
 								asChild
-								className={cn(
-									pathname === item.to && "bg-accent",
-								)}
+								className={cn(pathname === item.to && "bg-accent")}
 							>
 								<Link to={item.to}>{item.label}</Link>
 							</Button>
 						))}
 					</nav>
 					<div className="ml-auto">
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={logout}
-						>
+						<Button variant="ghost" size="sm" onClick={logout}>
 							Log out
 						</Button>
 					</div>
 				</div>
 			</header>
-			<main className="mx-auto max-w-5xl px-4 py-6">
-				{children}
-			</main>
+			<main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
 		</div>
 	);
 }

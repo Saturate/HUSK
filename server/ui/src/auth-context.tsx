@@ -1,20 +1,46 @@
-import { type ReactNode, createContext, useCallback, useContext, useMemo, useState } from "react";
+import { api } from "@/api";
+import {
+	type ReactNode,
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
 interface AuthContextValue {
-	token: string | null;
-	login: (token: string) => void;
+	isAuthenticated: boolean;
+	isLoading: boolean;
+	login: () => void;
 	logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-	const [token, setToken] = useState<string | null>(null);
+	const [isAuthenticated, setIsAuthenticated] = useState(false);
+	const [isLoading, setIsLoading] = useState(true);
 
-	const login = useCallback((t: string) => setToken(t), []);
-	const logout = useCallback(() => setToken(null), []);
+	useEffect(() => {
+		api
+			.me()
+			.then(() => setIsAuthenticated(true))
+			.catch(() => setIsAuthenticated(false))
+			.finally(() => setIsLoading(false));
+	}, []);
 
-	const value = useMemo(() => ({ token, login, logout }), [token, login, logout]);
+	const login = useCallback(() => setIsAuthenticated(true), []);
+
+	const logout = useCallback(() => {
+		api.logout().catch(() => {});
+		setIsAuthenticated(false);
+	}, []);
+
+	const value = useMemo(
+		() => ({ isAuthenticated, isLoading, login, logout }),
+		[isAuthenticated, isLoading, login, logout],
+	);
 
 	return <AuthContext value={value}>{children}</AuthContext>;
 }
