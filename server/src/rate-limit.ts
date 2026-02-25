@@ -9,14 +9,14 @@ interface RateLimitOpts {
 
 const allStores: Map<string, number[]>[] = [];
 
-/** Clear all rate limit state — used between tests */
+/** Clear all rate limit state - used between tests */
 export function resetRateLimiters() {
 	for (const store of allStores) store.clear();
 }
 
 /**
  * In-memory sliding window rate limiter keyed by client IP.
- * Entries are lazily pruned on each request — no timers needed.
+ * Entries are lazily pruned on each request - no timers needed.
  */
 export function rateLimiter(opts: RateLimitOpts) {
 	const hits = new Map<string, number[]>();

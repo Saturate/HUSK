@@ -1,5 +1,5 @@
 #!/bin/bash
-# YAMS SessionEnd hook — records session metadata as a memory
+# YAMS SessionEnd hook - records session metadata as a memory
 # Receives session event JSON on stdin
 
 set -euo pipefail

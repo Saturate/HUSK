@@ -8,7 +8,7 @@ let client: QdrantClient | null = null;
 
 export function getQdrantClient(): QdrantClient {
 	if (!client) {
-		throw new Error("Qdrant not initialized — call initQdrant() first");
+		throw new Error("Qdrant not initialized - call initQdrant() first");
 	}
 	return client;
 }

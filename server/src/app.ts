@@ -59,7 +59,7 @@ mountMcp(app);
 // Serve built UI static assets
 app.use("/assets/*", serveStatic({ root: "./ui/dist" }));
 
-// SPA fallback — serve index.html for all non-API routes
+// SPA fallback - serve index.html for all non-API routes
 app.get("*", serveStatic({ root: "./ui/dist", path: "index.html" }));
 
 app.onError((err, c) => {

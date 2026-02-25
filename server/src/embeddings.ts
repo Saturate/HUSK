@@ -79,10 +79,10 @@ export async function checkOllamaModel(): Promise<void> {
 		const hasModel = models.some((m) => m.name === model || m.name.startsWith(`${model}:`));
 
 		if (!hasModel) {
-			log.warn("Ollama model {model} is not pulled yet — run: ollama pull {model}", { model });
+			log.warn("Ollama model {model} is not pulled yet - run: ollama pull {model}", { model });
 		}
 	} catch {
-		log.warn("Ollama is not reachable at {url} — embeddings will fail until it's running", {
+		log.warn("Ollama is not reachable at {url} - embeddings will fail until it's running", {
 			url,
 		});
 	}

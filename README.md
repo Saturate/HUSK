@@ -1,8 +1,8 @@
 # YAMS
 
-**Your AI Memory System** — nutritious context for your AI
+**Your AI Memory System** - nutritious context for your AI
 
-Self-hosted memory layer for AI coding assistants. Captures what you work on, remembers cross-project patterns, and surfaces relevant context — across all your machines and tools.
+Self-hosted memory layer for AI coding assistants. Captures what you work on, remembers cross-project patterns, and surfaces relevant context - across all your machines and tools.
 
 ---
 
@@ -15,7 +15,7 @@ cd YAMS
 docker compose up -d
 ```
 
-This starts YAMS, Qdrant, and Ollama — and auto-pulls the embedding model on first run.
+This starts YAMS, Qdrant, and Ollama - and auto-pulls the embedding model on first run.
 
 Open `http://localhost:3000/setup` to create your admin account.
 
@@ -23,7 +23,7 @@ Open `http://localhost:3000/setup` to create your admin account.
 
 1. Log in at `http://localhost:3000`
 2. Go to **API Keys** → **Create Key**
-3. Copy the key (`yams_...`) — you won't see it again
+3. Copy the key (`yams_...`) - you won't see it again
 
 ### Install the Claude Code plugin
 
@@ -57,7 +57,7 @@ Memories are now captured automatically at the end of each session and available
   MCP    → /mcp                REST → /api/search
 ```
 
-The server is **client-agnostic**. `/ingest` is a universal write endpoint — any tool that can run a shell script or make an HTTP call can send memories. The plugin decides how it captures and retrieves, the server just stores.
+The server is **client-agnostic**. `/ingest` is a universal write endpoint - any tool that can run a shell script or make an HTTP call can send memories. The plugin decides how it captures and retrieves, the server just stores.
 
 ---
 
@@ -69,7 +69,7 @@ The server is **client-agnostic**. `/ingest` is a universal write endpoint — a
 | `project` | Per-repo knowledge | "This repo uses Zod, never Joi" |
 | `global` | Cross-project patterns | "Prefer TanStack Query for server state" |
 
-Projects are keyed by **git remote URL** — works across machines regardless of where the repo is checked out.
+Projects are keyed by **git remote URL** - works across machines regardless of where the repo is checked out.
 
 ---
 
@@ -91,7 +91,7 @@ Copy `.env.example` to `.env` and adjust as needed. All variables have sensible 
 
 ## Deployment
 
-Cookies are only marked `Secure` when `NODE_ENV=production`, so **localhost works out of the box** — no HTTPS needed for local use.
+Cookies are only marked `Secure` when `NODE_ENV=production`, so **localhost works out of the box** - no HTTPS needed for local use.
 
 For remote/public deployments, set `NODE_ENV=production` and run behind a reverse proxy (Nginx, Caddy, Traefik) for HTTPS.
 

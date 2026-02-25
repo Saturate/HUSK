@@ -3,7 +3,7 @@ FROM oven/bun:1 AS build
 
 WORKDIR /app
 
-# Workspace root deps (cache layer) — include all workspace package.json
+# Workspace root deps (cache layer) - include all workspace package.json
 # files so bun can resolve the lockfile correctly
 COPY package.json bun.lock ./
 COPY server/package.json server/package.json

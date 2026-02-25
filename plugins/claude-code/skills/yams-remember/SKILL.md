@@ -10,9 +10,9 @@ Store a memory in YAMS using the `remember` MCP tool.
 Use `$ARGUMENTS` as the content to remember. If no arguments provided, ask the user what they want to remember.
 
 Determine the appropriate scope:
-- **session** (default) — relevant to this coding session only
-- **project** — useful across sessions for this project
-- **global** — useful across all projects
+- **session** (default) - relevant to this coding session only
+- **project** - useful across sessions for this project
+- **global** - useful across all projects
 
 If the user doesn't specify a scope, infer it from context. Prefer `project` for project-specific patterns, conventions, or decisions. Use `global` for general preferences or cross-project insights.
 

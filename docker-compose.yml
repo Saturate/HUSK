@@ -1,4 +1,4 @@
-# Production: full stack — YAMS + Qdrant + Ollama
+# Production: full stack - YAMS + Qdrant + Ollama
 # Usage: docker compose up -d
 services:
   yams:

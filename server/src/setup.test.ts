@@ -21,7 +21,7 @@ describe("setup", () => {
 	test("GET /setup passes through to SPA", async () => {
 		const app = createTestApp();
 		const res = await app.request("/setup");
-		// Guard no longer blocks GET /setup — the SPA fallback serves index.html
+		// Guard no longer blocks GET /setup - the SPA fallback serves index.html
 		expect(res.status).toBe(200);
 	});
 
