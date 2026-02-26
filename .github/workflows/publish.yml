@@ -3,6 +3,11 @@ name: Build and publish Docker image
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
+      - "demo.gif"
+      - ".gitignore"
 
 env:
   REGISTRY: ghcr.io
