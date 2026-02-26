@@ -7,3 +7,4 @@ dist/
 server/ui/dist/
 *.tsbuildinfo
 .env
+.mcp.json

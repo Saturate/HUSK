@@ -31,15 +31,35 @@ Open `http://localhost:3000/setup` to create your admin account.
 2. Go to **API Keys** → **Create Key**
 3. Copy the key (`yams_...`) - you won't see it again
 
-### Install the Claude Code plugin
+### Connect Claude Code
+
+**Option A: MCP config** (recommended)
+
+Add a `.mcp.json` to your project root (or `~/.claude/.mcp.json` for global access):
+
+```json
+{
+  "mcpServers": {
+    "yams": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer yams_your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+Restart Claude Code and the MCP tools (`search`, `remember`, `list_projects`) are available immediately.
+
+**Option B: Plugin** (includes session-end hooks and skills)
 
 ```bash
 claude plugin add /path/to/YAMS/plugins/claude-code
 ```
 
-When prompted, set the `YAMS_API_KEY` environment variable to the key you created.
-
-Memories are now captured automatically at the end of each session and available via MCP tools (`search`, `remember`, `list_projects`).
+Set `YAMS_URL` and `YAMS_KEY` environment variables to your server URL and API key.
 
 ## How it works
 
