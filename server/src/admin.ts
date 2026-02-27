@@ -4,12 +4,13 @@ import { jwtMiddleware } from "./auth.js";
 import {
 	countMemories,
 	deleteMemory,
+	getApiKeyById,
 	getMemory,
+	listApiKeys,
 	listDistinctGitRemotes,
 	listDistinctScopes,
 	listMemories,
 } from "./db.js";
-import { listApiKeys } from "./db.js";
 import { getProvider } from "./embeddings.js";
 import type { AppEnv } from "./env.js";
 import { deletePoint, searchMemories } from "./qdrant.js";
@@ -23,9 +24,12 @@ admin.use("*", jwtMiddleware);
 // --- Stats ---
 
 admin.get("/stats", (c) => {
-	const memoryCount = countMemories();
-	const keys = listApiKeys();
-	const projects = listDistinctGitRemotes();
+	const isAdmin = c.get("role") === "admin";
+	const userId = isAdmin ? undefined : c.get("userId");
+
+	const memoryCount = countMemories({ userId });
+	const keys = isAdmin ? listApiKeys() : listApiKeys(c.get("userId"));
+	const projects = listDistinctGitRemotes(userId);
 	const activeKeys = keys.filter((k) => k.is_active).length;
 
 	return c.json({
@@ -38,8 +42,10 @@ admin.get("/stats", (c) => {
 // --- Filters ---
 
 admin.get("/filters", (c) => {
-	const projects = listDistinctGitRemotes();
-	const scopes = listDistinctScopes();
+	const isAdmin = c.get("role") === "admin";
+	const userId = isAdmin ? undefined : c.get("userId");
+	const projects = listDistinctGitRemotes(userId);
+	const scopes = listDistinctScopes(userId);
 	return c.json({ projects, scopes });
 });
 
@@ -59,12 +65,14 @@ admin.post("/search", async (c) => {
 	}
 
 	const limit = body.limit ?? 10;
+	const isAdmin = c.get("role") === "admin";
 
 	try {
 		const vector = await getProvider().embed(query);
-		const filter: { git_remote?: string; scope?: string } = {};
+		const filter: { git_remote?: string; scope?: string; user_id?: string } = {};
 		if (body.git_remote) filter.git_remote = body.git_remote;
 		if (body.scope) filter.scope = body.scope;
+		if (!isAdmin) filter.user_id = c.get("userId");
 
 		const results = await searchMemories(
 			vector,
@@ -95,9 +103,11 @@ admin.get("/memories", (c) => {
 	const scope = c.req.query("scope");
 	const limit = Math.min(Math.max(Number(c.req.query("limit")) || 50, 1), 200);
 	const offset = Math.max(Number(c.req.query("offset")) || 0, 0);
+	const isAdmin = c.get("role") === "admin";
+	const userId = isAdmin ? undefined : c.get("userId");
 
-	const memories = listMemories({ gitRemote, scope, limit, offset });
-	const total = countMemories({ gitRemote, scope });
+	const memories = listMemories({ gitRemote, scope, limit, offset, userId });
+	const total = countMemories({ gitRemote, scope, userId });
 
 	return c.json({ memories, total });
 });
@@ -108,6 +118,14 @@ admin.delete("/memories/:id", async (c) => {
 
 	if (!memory) {
 		return c.json({ error: "Memory not found." }, 404);
+	}
+
+	// Non-admin users can only delete their own memories
+	if (c.get("role") !== "admin") {
+		const key = getApiKeyById(memory.api_key_id);
+		if (!key || key.user_id !== c.get("userId")) {
+			return c.json({ error: "Memory not found." }, 404);
+		}
 	}
 
 	deleteMemory(id);

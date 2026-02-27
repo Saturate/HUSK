@@ -30,10 +30,30 @@ export function initDb(path?: string): Database {
 		CREATE TABLE IF NOT EXISTS users (
 			id TEXT PRIMARY KEY,
 			username TEXT UNIQUE NOT NULL,
-			password_hash TEXT NOT NULL,
+			password_hash TEXT,
+			role TEXT NOT NULL DEFAULT 'user',
+			oauth_provider TEXT,
+			oauth_id TEXT,
+			avatar_url TEXT,
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		)
 	`);
+	// Migration: add role column if missing (existing DBs)
+	const userCols = db.query<{ name: string }, []>("PRAGMA table_info(users)").all();
+	const colNames = new Set(userCols.map((c) => c.name));
+	if (!colNames.has("role")) {
+		db.run("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
+		// All existing users predate roles, promote them to admin
+		db.run("UPDATE users SET role = 'admin'");
+	}
+	if (!colNames.has("oauth_provider")) {
+		db.run("ALTER TABLE users ADD COLUMN oauth_provider TEXT");
+		db.run("ALTER TABLE users ADD COLUMN oauth_id TEXT");
+		db.run("ALTER TABLE users ADD COLUMN avatar_url TEXT");
+	}
+	db.run(
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id) WHERE oauth_provider IS NOT NULL",
+	);
 
 	db.run(`
 		CREATE TABLE IF NOT EXISTS api_keys (
@@ -63,6 +83,21 @@ export function initDb(path?: string): Database {
 	db.run("CREATE INDEX IF NOT EXISTS idx_memories_git_remote ON memories(git_remote)");
 	db.run("CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope)");
 
+	db.run(`
+		CREATE TABLE IF NOT EXISTS invites (
+			id TEXT PRIMARY KEY,
+			email TEXT NOT NULL,
+			token TEXT UNIQUE NOT NULL,
+			role TEXT NOT NULL DEFAULT 'user',
+			created_by TEXT NOT NULL REFERENCES users(id),
+			created_at TEXT NOT NULL DEFAULT (datetime('now')),
+			expires_at TEXT NOT NULL,
+			used_at TEXT
+		)
+	`);
+	db.run("CREATE INDEX IF NOT EXISTS idx_invites_token ON invites(token)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_invites_email ON invites(email)");
+
 	return db;
 }
 
@@ -73,22 +108,76 @@ export function getUserCount(): number {
 	return row?.count ?? 0;
 }
 
+export interface UserRow {
+	id: string;
+	username: string;
+	password_hash: string | null;
+	role: string;
+	oauth_provider: string | null;
+	oauth_id: string | null;
+	avatar_url: string | null;
+	created_at: string;
+}
+
 export function getUserByUsername(username: string) {
 	return db
-		.query<{ id: string; username: string; password_hash: string; created_at: string }, [string]>(
-			"SELECT id, username, password_hash, created_at FROM users WHERE username = ?",
-		)
+		.query<UserRow, [string]>("SELECT * FROM users WHERE username = ?")
 		.get(username);
 }
 
-export function createUser(username: string, passwordHash: string): string {
+export function getUserById(id: string) {
+	return db.query<UserRow, [string]>("SELECT * FROM users WHERE id = ?").get(id);
+}
+
+export function getUserByOAuth(provider: string, oauthId: string) {
+	return db
+		.query<UserRow, [string, string]>(
+			"SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?",
+		)
+		.get(provider, oauthId);
+}
+
+export function listUsers() {
+	return db
+		.query<UserRow, []>("SELECT * FROM users ORDER BY created_at ASC")
+		.all();
+}
+
+export function createUser(
+	username: string,
+	passwordHash: string | null,
+	opts?: { role?: string; oauthProvider?: string; oauthId?: string; avatarUrl?: string },
+): string {
 	const id = crypto.randomUUID();
-	db.query("INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)").run(
+	db.query(
+		"INSERT INTO users (id, username, password_hash, role, oauth_provider, oauth_id, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?)",
+	).run(
 		id,
 		username,
 		passwordHash,
+		opts?.role ?? "user",
+		opts?.oauthProvider ?? null,
+		opts?.oauthId ?? null,
+		opts?.avatarUrl ?? null,
 	);
 	return id;
+}
+
+export function deleteUser(id: string): boolean {
+	const txn = db.transaction(() => {
+		// Delete memories owned by this user's API keys
+		db.query(
+			"DELETE FROM memories WHERE api_key_id IN (SELECT id FROM api_keys WHERE user_id = ?)",
+		).run(id);
+		// Delete the user's API keys
+		db.query("DELETE FROM api_keys WHERE user_id = ?").run(id);
+		// Delete invites created by this user
+		db.query("DELETE FROM invites WHERE created_by = ?").run(id);
+		// Delete the user
+		const result = db.query("DELETE FROM users WHERE id = ?").run(id);
+		return result.changes > 0;
+	});
+	return txn();
 }
 
 // --- API Keys ---
@@ -193,24 +282,33 @@ export function listMemories(opts?: {
 	scope?: string;
 	limit?: number;
 	offset?: number;
+	userId?: string;
 }): MemoryRow[] {
 	const conditions: string[] = [];
 	const params: (string | number)[] = [];
 
 	if (opts?.gitRemote) {
-		conditions.push("git_remote = ?");
+		conditions.push("m.git_remote = ?");
 		params.push(opts.gitRemote);
 	}
 	if (opts?.scope) {
-		conditions.push("scope = ?");
+		conditions.push("m.scope = ?");
 		params.push(opts.scope);
 	}
+	if (opts?.userId) {
+		conditions.push("ak.user_id = ?");
+		params.push(opts.userId);
+	}
 
-	let sql = "SELECT * FROM memories";
+	const needsJoin = opts?.userId != null;
+	let sql = needsJoin
+		? "SELECT m.* FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id"
+		: "SELECT * FROM memories m";
+
 	if (conditions.length > 0) {
 		sql += ` WHERE ${conditions.join(" AND ")}`;
 	}
-	sql += " ORDER BY created_at DESC";
+	sql += " ORDER BY m.created_at DESC";
 
 	const limit = opts?.limit ?? 100;
 	const offset = opts?.offset ?? 0;
@@ -225,7 +323,15 @@ export function deleteMemory(id: string): boolean {
 	return result.changes > 0;
 }
 
-export function listDistinctGitRemotes(): string[] {
+export function listDistinctGitRemotes(userId?: string): string[] {
+	if (userId) {
+		const rows = db
+			.query<{ git_remote: string }, [string]>(
+				"SELECT DISTINCT m.git_remote FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id WHERE m.git_remote IS NOT NULL AND ak.user_id = ? ORDER BY m.git_remote",
+			)
+			.all(userId);
+		return rows.map((r) => r.git_remote);
+	}
 	const rows = db
 		.query<{ git_remote: string }, []>(
 			"SELECT DISTINCT git_remote FROM memories WHERE git_remote IS NOT NULL ORDER BY git_remote",
@@ -234,7 +340,15 @@ export function listDistinctGitRemotes(): string[] {
 	return rows.map((r) => r.git_remote);
 }
 
-export function listDistinctScopes(): string[] {
+export function listDistinctScopes(userId?: string): string[] {
+	if (userId) {
+		const rows = db
+			.query<{ scope: string }, [string]>(
+				"SELECT DISTINCT m.scope FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id WHERE ak.user_id = ? ORDER BY m.scope",
+			)
+			.all(userId);
+		return rows.map((r) => r.scope);
+	}
 	const rows = db
 		.query<{ scope: string }, []>("SELECT DISTINCT scope FROM memories ORDER BY scope")
 		.all();
@@ -244,26 +358,83 @@ export function listDistinctScopes(): string[] {
 export function countMemories(opts?: {
 	gitRemote?: string;
 	scope?: string;
+	userId?: string;
 }): number {
 	const conditions: string[] = [];
 	const params: string[] = [];
 
 	if (opts?.gitRemote) {
-		conditions.push("git_remote = ?");
+		conditions.push("m.git_remote = ?");
 		params.push(opts.gitRemote);
 	}
 	if (opts?.scope) {
-		conditions.push("scope = ?");
+		conditions.push("m.scope = ?");
 		params.push(opts.scope);
 	}
+	if (opts?.userId) {
+		conditions.push("ak.user_id = ?");
+		params.push(opts.userId);
+	}
 
-	let sql = "SELECT COUNT(*) as count FROM memories";
+	const needsJoin = opts?.userId != null;
+	let sql = needsJoin
+		? "SELECT COUNT(*) as count FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id"
+		: "SELECT COUNT(*) as count FROM memories m";
+
 	if (conditions.length > 0) {
 		sql += ` WHERE ${conditions.join(" AND ")}`;
 	}
 
 	const row = db.query<{ count: number }, string[]>(sql).get(...params);
 	return row?.count ?? 0;
+}
+
+// --- Invites ---
+
+export interface InviteRow {
+	id: string;
+	email: string;
+	token: string;
+	role: string;
+	created_by: string;
+	created_at: string;
+	expires_at: string;
+	used_at: string | null;
+}
+
+export function createInvite(params: {
+	email: string;
+	role: string;
+	createdBy: string;
+	expiresAt: string;
+}): { id: string; token: string } {
+	const id = crypto.randomUUID();
+	const token = Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url");
+	db.query(
+		"INSERT INTO invites (id, email, token, role, created_by, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
+	).run(id, params.email, token, params.role, params.createdBy, params.expiresAt);
+	return { id, token };
+}
+
+export function getInviteByToken(token: string) {
+	return db
+		.query<InviteRow, [string]>("SELECT * FROM invites WHERE token = ?")
+		.get(token);
+}
+
+export function listInvites() {
+	return db
+		.query<InviteRow, []>("SELECT * FROM invites ORDER BY created_at DESC")
+		.all();
+}
+
+export function deleteInvite(id: string): boolean {
+	const result = db.query("DELETE FROM invites WHERE id = ?").run(id);
+	return result.changes > 0;
+}
+
+export function markInviteUsed(id: string) {
+	db.query("UPDATE invites SET used_at = datetime('now') WHERE id = ?").run(id);
 }
 
 // --- JWT Secret ---

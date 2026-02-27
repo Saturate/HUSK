@@ -46,8 +46,48 @@ export interface SetupResponse {
 	username: string;
 }
 
+export type UserRole = "admin" | "user";
+
 export interface LoginResponse {
 	username: string;
+	role: UserRole;
+}
+
+export interface User {
+	id: string;
+	username: string;
+	role: UserRole;
+	oauth_provider: string | null;
+	avatar_url: string | null;
+	created_at: string;
+	key_count: number;
+}
+
+export interface AuthProviders {
+	github: boolean;
+}
+
+export interface Invite {
+	id: string;
+	email: string;
+	role: UserRole;
+	created_at: string;
+	expires_at: string;
+	used_at: string | null;
+}
+
+export interface CreateInviteResponse {
+	id: string;
+	email: string;
+	role: UserRole;
+	token: string;
+	invite_url: string;
+	expires_at: string;
+}
+
+export interface ValidateInviteResponse {
+	email: string;
+	role: UserRole;
 }
 
 export interface ApiKey {
@@ -131,7 +171,7 @@ export const api = {
 	},
 
 	me() {
-		return request<{ username: string }>("/api/auth/me");
+		return request<{ username: string; role: UserRole }>("/api/auth/me");
 	},
 
 	listKeys() {
@@ -189,5 +229,67 @@ export const api = {
 		return request<{ id: string; deleted: true }>(`/api/admin/memories/${encodeURIComponent(id)}`, {
 			method: "DELETE",
 		});
+	},
+
+	// --- Auth providers ---
+
+	getAuthProviders() {
+		return request<AuthProviders>("/api/auth/providers");
+	},
+
+	// --- User management (admin) ---
+
+	listUsers() {
+		return request<User[]>("/api/users");
+	},
+
+	createUser(username: string, password: string, role?: UserRole) {
+		return request<{ id: string; username: string; role: UserRole }>("/api/users", {
+			method: "POST",
+			body: JSON.stringify({ username, password, role }),
+		});
+	},
+
+	deleteUserAccount(id: string) {
+		return request<{ id: string; deleted: true }>(`/api/users/${encodeURIComponent(id)}`, {
+			method: "DELETE",
+		});
+	},
+
+	// --- Invites (admin) ---
+
+	createInvite(email: string, opts?: { role?: UserRole; expires_in_days?: number }) {
+		return request<CreateInviteResponse>("/api/invites", {
+			method: "POST",
+			body: JSON.stringify({ email, ...opts }),
+		});
+	},
+
+	listInvites() {
+		return request<Invite[]>("/api/invites");
+	},
+
+	deleteInvite(id: string) {
+		return request<{ id: string; deleted: true }>(`/api/invites/${encodeURIComponent(id)}`, {
+			method: "DELETE",
+		});
+	},
+
+	// --- Invites (public) ---
+
+	validateInvite(token: string) {
+		return request<ValidateInviteResponse>(
+			`/api/invites/${encodeURIComponent(token)}/validate`,
+		);
+	},
+
+	acceptInvite(token: string, username: string, password: string) {
+		return request<{ id: string; username: string; role: UserRole }>(
+			`/api/invites/${encodeURIComponent(token)}/accept`,
+			{
+				method: "POST",
+				body: JSON.stringify({ username, password }),
+			},
+		);
 	},
 };

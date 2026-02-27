@@ -5,10 +5,11 @@ import { bodyLimit } from "hono/body-limit";
 import { serveStatic } from "hono/bun";
 import { NONCE, secureHeaders } from "hono/secure-headers";
 import { admin } from "./admin.js";
-import { auth, keys } from "./auth.js";
+import { auth, invites, keys, users } from "./auth.js";
 import { getDb } from "./db.js";
 import { ingest } from "./ingest.js";
 import { mountMcp } from "./mcp.js";
+import { isGitHubOAuthEnabled, oauth } from "./oauth.js";
 import { getQdrantClient } from "./qdrant.js";
 import { rateLimiter } from "./rate-limit.js";
 import { setup, setupGuard } from "./setup.js";
@@ -26,7 +27,7 @@ app.use(
 			scriptSrc: ["'self'", NONCE],
 			styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
 			fontSrc: ["'self'", "https://fonts.gstatic.com"],
-			imgSrc: ["'self'", "data:"],
+			imgSrc: ["'self'", "data:", "https://avatars.githubusercontent.com"],
 			connectSrc: ["'self'"],
 			frameAncestors: ["'none'"],
 			baseUri: ["'self'"],
@@ -60,13 +61,25 @@ app.get("/health", (c) => {
 
 app.use("/setup/*", rateLimiter({ window: 60, max: 5 }));
 app.use("/api/auth/*", rateLimiter({ window: 60, max: 10 }));
+app.use("/api/users/*", rateLimiter({ window: 60, max: 20 }));
+app.use("/api/invites/*", rateLimiter({ window: 60, max: 10 }));
 app.use("/ingest/*", rateLimiter({ window: 60, max: 60 }));
 app.use("/mcp/*", rateLimiter({ window: 60, max: 60 }));
 
 app.route("/setup", setup);
 app.route("/api/auth", auth);
+app.route("/api/auth", oauth);
 app.route("/api/keys", keys);
+app.route("/api/users", users);
+app.route("/api/invites", invites);
 app.route("/api/admin", admin);
+
+// Providers endpoint - returns which auth methods are available
+app.get("/api/auth/providers", (c) => {
+	return c.json({
+		github: isGitHubOAuthEnabled(),
+	});
+});
 
 app.route("/ingest", ingest);
 mountMcp(app);

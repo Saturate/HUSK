@@ -7,6 +7,8 @@ import { LoginPage } from "@/pages/login";
 import { MemoriesPage } from "@/pages/memories";
 import { SettingsPage } from "@/pages/settings";
 import { SetupPage } from "@/pages/setup";
+import { InvitePage } from "@/pages/invite";
+import { UsersPage } from "@/pages/users";
 import { ThemeProvider } from "@/theme-context";
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
@@ -40,10 +42,12 @@ export function App() {
 						<Routes>
 							<Route path="/setup" element={<SetupPage />} />
 							<Route path="/login" element={<LoginPage />} />
+							<Route path="/invite/:token" element={<InvitePage />} />
 							<Route element={<ProtectedRoute />}>
 								<Route path="/dashboard" element={<DashboardPage />} />
 								<Route path="/keys" element={<KeysPage />} />
 								<Route path="/memories" element={<MemoriesPage />} />
+								<Route path="/users" element={<UsersPage />} />
 								<Route path="/settings" element={<SettingsPage />} />
 							</Route>
 							<Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -49,9 +49,9 @@ setup.post("/", async (c) => {
 		return c.json({ error: "Setup already completed." }, 403);
 	}
 
-	const id = createUser(username, hash);
+	const id = createUser(username, hash, { role: "admin" });
 
-	return c.json({ id, username }, 201);
+	return c.json({ id, username, role: "admin" }, 201);
 });
 
 export { setup };
