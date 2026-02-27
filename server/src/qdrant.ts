@@ -36,6 +36,7 @@ export async function initQdrant(dimensions?: number): Promise<void> {
 export interface MemoryPayload {
 	[key: string]: unknown;
 	memory_id: string;
+	user_id: string;
 	git_remote: string | null;
 	scope: string;
 	api_key_label: string;
@@ -61,12 +62,16 @@ export async function deletePoint(id: string): Promise<void> {
 export interface MemoryFilter {
 	git_remote?: string;
 	scope?: string;
+	user_id?: string;
 }
 
 export async function searchMemories(vector: number[], filter?: MemoryFilter, limit = 10) {
 	const qdrant = getQdrantClient();
 
 	const must: Array<{ key: string; match: { value: string } }> = [];
+	if (filter?.user_id) {
+		must.push({ key: "user_id", match: { value: filter.user_id } });
+	}
 	if (filter?.git_remote) {
 		must.push({ key: "git_remote", match: { value: filter.git_remote } });
 	}

@@ -16,6 +16,7 @@ interface StoreMemoryParams {
 	summary: string;
 	apiKeyId: string;
 	apiKeyLabel: string;
+	userId: string;
 	gitRemote?: string | null;
 	scope?: string;
 	metadata?: Record<string, unknown> | null;
@@ -64,6 +65,7 @@ export async function storeMemory(params: StoreMemoryParams): Promise<StoredMemo
 	try {
 		await upsertMemory(id, vector, {
 			memory_id: id,
+			user_id: params.userId,
 			git_remote: gitRemote,
 			scope,
 			api_key_label: params.apiKeyLabel,
@@ -117,6 +119,7 @@ ingest.post("/", async (c) => {
 			summary,
 			apiKeyId: apiKey.id,
 			apiKeyLabel: apiKey.label,
+			userId: apiKey.user_id,
 			gitRemote: body.git_remote,
 			scope: body.scope,
 			metadata: body.metadata,

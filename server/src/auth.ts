@@ -4,18 +4,29 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { SignJWT, jwtVerify } from "jose";
 import {
 	createApiKey,
+	createInvite,
+	createUser,
+	deleteInvite,
+	deleteUser,
 	getApiKeyByHash,
 	getApiKeyById,
+	getInviteByToken,
 	getOrCreateJwtSecret,
+	getUserById,
 	getUserByUsername,
 	listApiKeys,
+	listInvites,
+	listUsers,
+	markInviteUsed,
 	revokeApiKey,
 	updateKeyLastUsed,
 } from "./db.js";
 import type { AppEnv } from "./env.js";
+import type { UserRole } from "./env.js";
 
 export type { ValidatedApiKey } from "./env.js";
 export type { AppEnv } from "./env.js";
+export type { UserRole } from "./env.js";
 
 const COOKIE_NAME = "yams_session";
 
@@ -40,6 +51,7 @@ export async function jwtMiddleware(c: Context<AppEnv>, next: Next) {
 		const { payload } = await jwtVerify(token, getSecretKey(), { issuer: "yams" });
 		c.set("userId", payload.sub as string);
 		c.set("username", payload.username as string);
+		c.set("role", (payload.role as UserRole) ?? "user");
 	} catch {
 		return c.json({ error: "Invalid or expired token." }, 401);
 	}
@@ -93,9 +105,44 @@ export async function bearerKeyMiddleware(c: Context<AppEnv>, next: Next) {
 	return next();
 }
 
+// --- Session helpers (shared with OAuth) ---
+
+export async function signSessionToken(userId: string, username: string, role: UserRole) {
+	return new SignJWT({ sub: userId, username, role })
+		.setProtectedHeader({ alg: "HS256" })
+		.setIssuer("yams")
+		.setExpirationTime("24h")
+		.sign(getSecretKey());
+}
+
+export function setSessionCookie(c: Context, token: string) {
+	setCookie(c, COOKIE_NAME, token, {
+		httpOnly: true,
+		sameSite: "Lax",
+		path: "/",
+		maxAge: 60 * 60 * 24,
+		secure: process.env.NODE_ENV === "production",
+	});
+}
+
+// --- Role-based authorization ---
+
+export function requireRole(...roles: UserRole[]) {
+	return async (c: Context<AppEnv>, next: Next) => {
+		const role = c.get("role");
+		if (!roles.includes(role)) {
+			return c.json({ error: "Forbidden." }, 403);
+		}
+		return next();
+	};
+}
+
 // --- Auth routes (login) ---
 
 const auth = new Hono<AppEnv>();
+
+// Dummy hash to compare against when user doesn't exist (constant-time defense)
+const DUMMY_HASH = await Bun.password.hash("dummy-timing-defense");
 
 auth.post("/login", async (c) => {
 	const body = await c.req.json<{ username?: string; password?: string }>();
@@ -108,30 +155,19 @@ auth.post("/login", async (c) => {
 	}
 
 	const user = getUserByUsername(username);
-	if (!user) {
+	// Always run verify to prevent timing-based username enumeration
+	const hashToCheck = user?.password_hash ?? DUMMY_HASH;
+	const valid = await Bun.password.verify(password, hashToCheck);
+
+	if (!user || !user.password_hash || !valid) {
 		return c.json({ error: "Invalid credentials." }, 401);
 	}
 
-	const valid = await Bun.password.verify(password, user.password_hash);
-	if (!valid) {
-		return c.json({ error: "Invalid credentials." }, 401);
-	}
+	const token = await signSessionToken(user.id, user.username, user.role as UserRole);
 
-	const token = await new SignJWT({ sub: user.id, username: user.username })
-		.setProtectedHeader({ alg: "HS256" })
-		.setIssuer("yams")
-		.setExpirationTime("24h")
-		.sign(getSecretKey());
+	setSessionCookie(c, token);
 
-	setCookie(c, COOKIE_NAME, token, {
-		httpOnly: true,
-		sameSite: "Strict",
-		path: "/",
-		maxAge: 60 * 60 * 24,
-		secure: process.env.NODE_ENV === "production",
-	});
-
-	return c.json({ username: user.username });
+	return c.json({ username: user.username, role: user.role });
 });
 
 auth.post("/logout", (c) => {
@@ -142,6 +178,7 @@ auth.post("/logout", (c) => {
 auth.get("/me", jwtMiddleware, (c) => {
 	return c.json({
 		username: c.get("username"),
+		role: c.get("role"),
 	});
 });
 
@@ -225,4 +262,189 @@ keys.delete("/:id", (c) => {
 	return c.json({ id, revoked: true });
 });
 
-export { auth, keys };
+// --- User management routes (admin-only) ---
+
+const users = new Hono<AppEnv>();
+
+users.use("*", jwtMiddleware);
+users.use("*", requireRole("admin"));
+
+users.get("/", (c) => {
+	const allUsers = listUsers();
+	return c.json(
+		allUsers.map((u) => {
+			const keys = listApiKeys(u.id);
+			return {
+				id: u.id,
+				username: u.username,
+				role: u.role,
+				oauth_provider: u.oauth_provider,
+				avatar_url: u.avatar_url,
+				created_at: u.created_at,
+				key_count: keys.filter((k) => k.is_active).length,
+			};
+		}),
+	);
+});
+
+users.post("/", async (c) => {
+	const body = await c.req.json<{ username?: string; password?: string; role?: string }>();
+
+	const username = body.username?.trim();
+	const password = body.password;
+	const role = body.role ?? "user";
+
+	if (!username || username.length < 3) {
+		return c.json({ error: "Username must be at least 3 characters." }, 400);
+	}
+	if (!password || password.length < 8) {
+		return c.json({ error: "Password must be at least 8 characters." }, 400);
+	}
+	if (role !== "admin" && role !== "user") {
+		return c.json({ error: "Role must be 'admin' or 'user'." }, 400);
+	}
+
+	const existing = getUserByUsername(username);
+	if (existing) {
+		return c.json({ error: "Username already taken." }, 409);
+	}
+
+	const hash = await Bun.password.hash(password);
+	const id = createUser(username, hash, { role });
+
+	return c.json({ id, username, role }, 201);
+});
+
+users.delete("/:id", (c) => {
+	const id = c.req.param("id");
+
+	if (id === c.get("userId")) {
+		return c.json({ error: "Cannot delete your own account." }, 400);
+	}
+
+	const user = getUserById(id);
+	if (!user) {
+		return c.json({ error: "User not found." }, 404);
+	}
+
+	deleteUser(id);
+	return c.json({ id, deleted: true });
+});
+
+// --- Invite routes ---
+
+const invites = new Hono<AppEnv>();
+
+// Admin routes (create, list, delete)
+invites.post("/", jwtMiddleware, requireRole("admin"), async (c) => {
+	const body = await c.req.json<{ email?: string; role?: string; expires_in_days?: number }>();
+
+	const email = body.email?.trim().toLowerCase();
+	if (!email || !email.includes("@")) {
+		return c.json({ error: "Valid email is required." }, 400);
+	}
+
+	const role = body.role ?? "user";
+	if (role !== "admin" && role !== "user") {
+		return c.json({ error: "Role must be 'admin' or 'user'." }, 400);
+	}
+
+	const days = body.expires_in_days ?? 7;
+	const expiresAt = new Date(Date.now() + days * 86400 * 1000).toISOString();
+
+	const { id, token } = createInvite({
+		email,
+		role,
+		createdBy: c.get("userId"),
+		expiresAt,
+	});
+
+	const origin = new URL(c.req.url).origin;
+	const inviteUrl = `${origin}/invite/${token}`;
+
+	return c.json({ id, email, role, token, invite_url: inviteUrl, expires_at: expiresAt }, 201);
+});
+
+invites.get("/", jwtMiddleware, requireRole("admin"), (c) => {
+	const all = listInvites();
+	return c.json(
+		all.map((inv) => ({
+			id: inv.id,
+			email: inv.email,
+			role: inv.role,
+			created_at: inv.created_at,
+			expires_at: inv.expires_at,
+			used_at: inv.used_at,
+		})),
+	);
+});
+
+invites.delete("/:id", jwtMiddleware, requireRole("admin"), (c) => {
+	const id = c.req.param("id");
+	if (!deleteInvite(id)) {
+		return c.json({ error: "Invite not found." }, 404);
+	}
+	return c.json({ id, deleted: true });
+});
+
+// Public routes (validate + accept)
+invites.get("/:token/validate", (c) => {
+	const token = c.req.param("token");
+	const invite = getInviteByToken(token);
+
+	if (!invite) {
+		return c.json({ error: "Invalid invite link." }, 404);
+	}
+	if (invite.used_at) {
+		return c.json({ error: "This invite has already been used." }, 410);
+	}
+	if (new Date(invite.expires_at) < new Date()) {
+		return c.json({ error: "This invite has expired." }, 410);
+	}
+
+	return c.json({ email: invite.email, role: invite.role });
+});
+
+invites.post("/:token/accept", async (c) => {
+	const token = c.req.param("token");
+	const invite = getInviteByToken(token);
+
+	if (!invite) {
+		return c.json({ error: "Invalid invite link." }, 404);
+	}
+	if (invite.used_at) {
+		return c.json({ error: "This invite has already been used." }, 410);
+	}
+	if (new Date(invite.expires_at) < new Date()) {
+		return c.json({ error: "This invite has expired." }, 410);
+	}
+
+	const body = await c.req.json<{ username?: string; password?: string }>();
+
+	const username = body.username?.trim();
+	const password = body.password;
+
+	if (!username || username.length < 3) {
+		return c.json({ error: "Username must be at least 3 characters." }, 400);
+	}
+	if (!password || password.length < 8) {
+		return c.json({ error: "Password must be at least 8 characters." }, 400);
+	}
+
+	const existing = getUserByUsername(username);
+	if (existing) {
+		return c.json({ error: "Username already taken." }, 409);
+	}
+
+	const hash = await Bun.password.hash(password);
+	const role = invite.role as UserRole;
+	const id = createUser(username, hash, { role });
+	markInviteUsed(invite.id);
+
+	const sessionToken = await signSessionToken(id, username, role);
+	setSessionCookie(c, sessionToken);
+
+	return c.json({ id, username, role }, 201);
+});
+
+export { auth, keys, users, invites };

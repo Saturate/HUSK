@@ -28,15 +28,22 @@ export function AuthLayout({
 	);
 }
 
-const NAV_ITEMS = [
+interface NavItem {
+	to: string;
+	label: string;
+	adminOnly?: boolean;
+}
+
+const NAV_ITEMS: NavItem[] = [
 	{ to: "/dashboard", label: "Dashboard" },
 	{ to: "/keys", label: "API Keys" },
 	{ to: "/memories", label: "Memories" },
+	{ to: "/users", label: "Users", adminOnly: true },
 	{ to: "/settings", label: "Settings" },
 ];
 
 export function AppLayout({ children }: { children: ReactNode }) {
-	const { logout } = useAuth();
+	const { logout, isAdmin, username } = useAuth();
 	const { pathname } = useLocation();
 	const acronym = useMemo(() => randomBackronym(), []);
 
@@ -54,7 +61,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 						YAMS
 					</h1>
 					<nav aria-label="Main navigation" className="flex gap-1">
-						{NAV_ITEMS.map((item) => (
+						{NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
 							<Button
 								key={item.to}
 								variant="ghost"
@@ -66,7 +73,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
 							</Button>
 						))}
 					</nav>
-					<div className="ml-auto">
+					<div className="ml-auto flex items-center gap-2">
+						{username && (
+							<span className="text-sm text-muted-foreground">{username}</span>
+						)}
 						<Button variant="ghost" size="sm" onClick={logout}>
 							Log out
 						</Button>

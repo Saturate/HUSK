@@ -50,7 +50,7 @@ function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 			try {
 				const results = await searchMemories(
 					vector,
-					{ git_remote: args.project, scope: args.scope },
+					{ git_remote: args.project, scope: args.scope, user_id: apiKey.user_id },
 					args.limit ?? 10,
 				);
 
@@ -101,6 +101,7 @@ function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 					summary: args.content,
 					apiKeyId: apiKey.id,
 					apiKeyLabel: apiKey.label,
+					userId: apiKey.user_id,
 					gitRemote: args.project,
 					scope: args.scope,
 				});
@@ -145,7 +146,7 @@ function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 			description: "List known projects (distinct git remotes)",
 		},
 		() => {
-			const projects = listDistinctGitRemotes();
+			const projects = listDistinctGitRemotes(apiKey.user_id);
 			return {
 				content: [
 					{
