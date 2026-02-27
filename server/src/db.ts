@@ -39,7 +39,7 @@ export function initDb(path?: string): Database {
 		)
 	`);
 	// Migration: add role column if missing (existing DBs)
-	const userCols = db.query<{ name: string }, []>("PRAGMA table_info(users)").all();
+	const userCols = db.query<{ name: string; notnull: number }, []>("PRAGMA table_info(users)").all();
 	const colNames = new Set(userCols.map((c) => c.name));
 	if (!colNames.has("role")) {
 		db.run("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
@@ -54,6 +54,35 @@ export function initDb(path?: string): Database {
 	db.run(
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id) WHERE oauth_provider IS NOT NULL",
 	);
+	// Migration: make password_hash nullable (required for OAuth users)
+	// SQLite can't ALTER COLUMN, so we recreate the table.
+	const pwCol = userCols.find((c) => c.name === "password_hash");
+	if (pwCol && pwCol.notnull) {
+		db.run("PRAGMA foreign_keys = OFF");
+		db.run("BEGIN");
+		db.run("DROP TABLE IF EXISTS users_new");
+		db.run(`
+			CREATE TABLE users_new (
+				id TEXT PRIMARY KEY,
+				username TEXT UNIQUE NOT NULL,
+				password_hash TEXT,
+				role TEXT NOT NULL DEFAULT 'user',
+				oauth_provider TEXT,
+				oauth_id TEXT,
+				avatar_url TEXT,
+				created_at TEXT NOT NULL DEFAULT (datetime('now'))
+			)
+		`);
+		db.run("INSERT INTO users_new SELECT id, username, password_hash, role, oauth_provider, oauth_id, avatar_url, created_at FROM users");
+		db.run("DROP TABLE users");
+		db.run("ALTER TABLE users_new RENAME TO users");
+		db.run(
+			"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id) WHERE oauth_provider IS NOT NULL",
+		);
+		db.run("COMMIT");
+		db.run("PRAGMA foreign_keys = ON");
+		db.run("PRAGMA foreign_key_check");
+	}
 
 	db.run(`
 		CREATE TABLE IF NOT EXISTS api_keys (
