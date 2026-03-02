@@ -1,0 +1,16 @@
+{
+	"title": "Docs",
+	"pages": [
+		"index",
+		"quick-start",
+		"connecting",
+		"---Concepts---",
+		"...concepts",
+		"---MCP Tools---",
+		"...mcp-tools",
+		"---Reference---",
+		"configuration",
+		"deployment",
+		"development"
+	]
+}

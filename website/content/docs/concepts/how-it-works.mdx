@@ -1,0 +1,32 @@
+---
+title: How It Works
+description: Architecture overview and design principles.
+---
+
+## Architecture
+
+YAMS is built on three components:
+
+- **YAMS server** (Bun + Hono) — HTTP API, MCP endpoint, admin UI, SQLite for structured data
+- **Qdrant** — vector database for semantic similarity search
+- **Ollama** — runs embedding models locally for converting text into vectors
+
+When a memory is stored, YAMS embeds the text using Ollama, stores the metadata in SQLite, and upserts the vector into Qdrant. When searching, the query is embedded the same way and Qdrant returns the most similar vectors.
+
+## Client-agnostic design
+
+The server doesn't know or care what client is sending data. The `/ingest` endpoint is a universal write API — any tool that can make an HTTP call can store memories. The MCP endpoint wraps the same logic for MCP-compatible clients.
+
+This means YAMS works with:
+
+- Claude Code (via MCP or the plugin)
+- Any future MCP client
+- Custom scripts hitting the REST API directly
+
+The plugin decides **how** to capture and retrieve context. The server just stores and searches.
+
+## Data flow
+
+1. **Store**: Client sends text → YAMS embeds it via Ollama → stores in SQLite + Qdrant
+2. **Search**: Client sends query → YAMS embeds query → Qdrant finds similar vectors → YAMS returns matched memories
+3. **Session tracking**: The Claude Code plugin sends observations (prompts, tool usage, files modified) → YAMS records them → later sessions can review past work via `session_context` and `get_session_detail`

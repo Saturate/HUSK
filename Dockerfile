@@ -8,6 +8,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY server/package.json server/package.json
 COPY plugins/claude-code/package.json plugins/claude-code/package.json
+COPY website/package.json website/package.json
 RUN bun install --frozen-lockfile
 
 # UI deps (separate lockfile)
@@ -27,6 +28,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY server/package.json server/package.json
 COPY plugins/claude-code/package.json plugins/claude-code/package.json
+COPY website/package.json website/package.json
 RUN bun install --frozen-lockfile --production
 
 # ── Stage 3: Production (Alpine) ─────────────────────────────

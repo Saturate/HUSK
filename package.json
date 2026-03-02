@@ -1,5 +1,5 @@
 {
 	"name": "yams",
 	"private": true,
-	"workspaces": ["server", "plugins/*"]
+	"workspaces": ["server", "plugins/*", "website"]
 }

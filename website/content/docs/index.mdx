@@ -1,0 +1,21 @@
+---
+title: Introduction
+description: What YAMS is and why you need it.
+---
+
+YAMS is a self-hosted memory layer for AI coding assistants. It captures what you work on, remembers cross-project patterns, and surfaces relevant context — across all your machines and tools.
+
+## Key features
+
+- **Semantic search** — find memories by meaning, not just keywords. Powered by local embeddings (Ollama) and vector search (Qdrant).
+- **Memory scopes** — session, project, and global memories with automatic TTL. Keep the right context at the right level.
+- **Client-agnostic** — works with any MCP-compatible client. Claude Code plugin included, but the server doesn't care what sends the data.
+- **Duplicate detection** — automatically detects and prevents storing near-identical memories using configurable similarity thresholds.
+- **Session tracking** — records what you work on across sessions, summarises past work, and lets you pick up where you left off.
+- **Self-hosted** — your data stays on your machines. SQLite + Qdrant + Ollama, all running locally via Docker Compose.
+
+## How to get started
+
+1. [Quick start](/docs/quick-start) — get YAMS running with Docker Compose in under a minute
+2. [Connecting](/docs/connecting) — wire up Claude Code or any MCP client
+3. [MCP Tools](/docs/mcp-tools) — reference for all available tools

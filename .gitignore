@@ -8,3 +8,5 @@ server/ui/dist/
 *.tsbuildinfo
 .env
 .mcp.json
+website/.next/
+website/.source/

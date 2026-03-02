@@ -1,0 +1,52 @@
+---
+title: Development
+description: Local development setup, tests, and linting.
+---
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) (runtime and package manager)
+- [Docker](https://www.docker.com/) (for Qdrant and Ollama)
+
+## Setup
+
+```bash
+# Start Qdrant + Ollama (server runs locally, not in Docker)
+docker compose -f docker-compose.dev.yml up -d
+
+# Install dependencies
+bun install
+cd server/ui && bun install && cd ../..
+
+# Run server with hot reload
+cd server && bun run dev
+```
+
+The dev compose file starts only Qdrant and Ollama — the YAMS server runs directly on your machine for fast iteration.
+
+## Tests
+
+```bash
+cd server && bun test
+```
+
+## Lint and format
+
+```bash
+cd server && bun run check
+```
+
+This runs Biome for linting and formatting.
+
+## Project structure
+
+```
+YAMS/
+├── server/           # Main YAMS server (Bun + Hono)
+│   ├── src/          # Server source code
+│   └── ui/           # Admin UI (separate lockfile)
+├── plugins/
+│   └── claude-code/  # Claude Code plugin
+├── website/          # Documentation site (Fumadocs)
+└── docker-compose.yml
+```

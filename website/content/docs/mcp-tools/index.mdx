@@ -1,0 +1,27 @@
+---
+title: MCP Tools Overview
+description: All available MCP tools at a glance.
+---
+
+YAMS exposes the following tools via the MCP endpoint. Each tool has a cost annotation so your AI client can make informed decisions about when to call them.
+
+## Tools
+
+| Tool | Description | Cost |
+|---|---|---|
+| [`search`](/docs/mcp-tools/memory-tools#search) | Semantic similarity search across memories | Embedding + DB read |
+| [`remember`](/docs/mcp-tools/memory-tools#remember) | Store a new memory with dedup checking | Embedding + vector search + DB write |
+| [`forget`](/docs/mcp-tools/memory-tools#forget) | Delete a memory by ID | DB write + vector delete |
+| [`list_memories`](/docs/mcp-tools/memory-tools#list_memories) | List all memories with optional filters | DB read only |
+| [`list_projects`](/docs/mcp-tools/session-tools#list_projects) | List known projects (distinct git remotes) | DB read only |
+| [`session_context`](/docs/mcp-tools/session-tools#session_context) | Compact index of recent sessions | DB read only |
+| [`get_session_detail`](/docs/mcp-tools/session-tools#get_session_detail) | Full session details with observations | DB read only |
+| [`get_observation`](/docs/mcp-tools/session-tools#get_observation) | Single observation with full content | DB read only |
+
+## Prompts
+
+| Prompt | Description |
+|---|---|
+| [`meditate`](/docs/mcp-tools/meditate) | Guided memory cleanup — finds duplicates, contradictions, stale entries |
+
+All "DB read only" tools are cheap and fast. Tools that involve embedding calls go through Ollama, which adds latency depending on your hardware.

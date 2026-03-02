@@ -1,0 +1,128 @@
+---
+title: Memory Tools
+description: Tools for searching, storing, listing, and deleting memories.
+---
+
+## search
+
+Search memories by semantic similarity. Returns the most relevant memories for a given query.
+
+**Cost:** Embedding call + DB read (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `query` | string | Yes | The search query |
+| `scope` | `"session"` \| `"project"` \| `"global"` | No | Filter by scope |
+| `project` | string | No | Filter by git remote / project |
+| `limit` | integer (1–50) | No | Max results. Default: 10 |
+| `max_tokens` | integer (1–100,000) | No | Token budget — returns memories until budget is exhausted. Overrides `limit`. |
+
+### Token budgeting
+
+When `max_tokens` is set, YAMS fetches up to 50 results internally and returns as many as fit within the token budget. This lets the AI client say "give me as much context as you can in 2000 tokens" without having to guess a limit.
+
+Token estimates use ~4 characters per token.
+
+### Example
+
+```json
+{
+  "query": "how do we handle date parsing",
+  "scope": "project",
+  "max_tokens": 2000
+}
+```
+
+---
+
+## remember
+
+Store a new memory. Checks for duplicates automatically — if a similar memory already exists, returns it instead of creating a new one.
+
+**Cost:** Embedding call + vector search + DB write (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `content` | string | Yes | The content to remember |
+| `scope` | `"session"` \| `"project"` \| `"global"` | No | Memory scope. Default: `"session"` |
+| `project` | string | No | Git remote / project identifier |
+| `force` | boolean | No | Skip duplicate check and store anyway |
+| `replace` | string | No | ID of an existing memory to overwrite |
+| `ttl` | integer | No | TTL in seconds. `0` or omitted = scope default |
+
+### Dedup behavior
+
+When storing, YAMS embeds the content and searches for existing memories from the same user. If the closest match scores above the dedup threshold (default 0.92), the existing memory is returned with `duplicate: true`.
+
+Use `force: true` to skip this check, or `replace: "id"` to explicitly overwrite a specific memory.
+
+### TTL defaults
+
+| Scope | Default TTL |
+|---|---|
+| `session` | 30 days (2,592,000s) |
+| `project` | 90 days (7,776,000s) |
+| `global` | Forever |
+
+### Example
+
+```json
+{
+  "content": "This project uses dayjs for date parsing, not moment",
+  "scope": "project",
+  "project": "git@github.com:example/repo.git"
+}
+```
+
+---
+
+## forget
+
+Delete a memory by ID. Use `search` or `list_memories` first to find the ID.
+
+**Cost:** DB write + vector delete (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | Yes | The memory ID to delete |
+
+### Example
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+---
+
+## list_memories
+
+List all memories with optional filters. Returns full memory objects including IDs — useful for auditing, cleanup, or bulk review.
+
+**Cost:** DB read only (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `project` | string | No | Filter by git remote / project |
+| `scope` | `"session"` \| `"project"` \| `"global"` | No | Filter by scope |
+| `limit` | integer (1–200) | No | Max results. Default: 50 |
+| `offset` | integer | No | Pagination offset. Default: 0 |
+
+### Example
+
+```json
+{
+  "project": "git@github.com:example/repo.git",
+  "scope": "project",
+  "limit": 20
+}
+```

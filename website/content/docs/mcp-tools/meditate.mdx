@@ -1,0 +1,46 @@
+---
+title: Meditate
+description: The guided memory cleanup prompt.
+---
+
+`meditate` is an MCP **prompt** (not a tool) that guides your AI assistant through a structured memory cleanup workflow.
+
+## What it does
+
+When invoked, it asks the AI to:
+
+1. **List all memories** for a given project/scope, paging through all results
+2. **Analyze** them for issues:
+   - **Duplicates** — memories saying essentially the same thing
+   - **Contradictions** — memories that conflict (keeps the newer one)
+   - **Stale** — memories about things no longer true or relevant
+   - **Verbose** — memories that could be shorter without losing meaning
+3. **Take action** for each issue:
+   - Duplicates → keep the best, `forget` the rest
+   - Contradictions → keep the most recent, `forget` the outdated one
+   - Stale → `forget` them
+   - Verbose → `remember` with `replace` to rewrite concisely
+4. **Report** what changed — memory count before/after, what was removed/rewritten
+
+## Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `project` | string | No | Git remote / project to focus on |
+| `scope` | `"session"` \| `"project"` \| `"global"` | No | Scope to review |
+
+## Usage
+
+In Claude Code, you can invoke it by asking:
+
+```
+Use the meditate prompt to clean up my project memories
+```
+
+Or for a specific scope:
+
+```
+Run meditate on my global memories
+```
+
+The prompt is conservative by default — when in doubt, it keeps the memory rather than deleting it.

@@ -1,0 +1,99 @@
+---
+title: Session Tools
+description: Tools for exploring projects, sessions, and observations.
+---
+
+## list_projects
+
+List all known projects (distinct git remotes) that have been used with YAMS.
+
+### Parameters
+
+None.
+
+### Response
+
+```json
+{
+  "projects": [
+    "git@github.com:example/repo-a.git",
+    "git@github.com:example/repo-b.git"
+  ]
+}
+```
+
+---
+
+## session_context
+
+List recent sessions as a compact index. Returns session IDs, dates, project, status, observation count, files modified, and a short summary preview.
+
+Use `get_session_detail` to fetch full details for interesting sessions.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `project` | string | No | Filter by project (git remote or cwd) |
+| `limit` | integer (1–20) | No | Number of sessions to return. Default: 5 |
+
+### Response fields
+
+| Field | Description |
+|---|---|
+| `session_id` | Unique session identifier |
+| `project` | Git remote or working directory |
+| `status` | Session status (active, ended, etc.) |
+| `started_at` | ISO timestamp |
+| `ended_at` | ISO timestamp (null if still active) |
+| `observation_count` | Number of observations recorded |
+| `files_modified` | List of files touched during the session |
+| `summary_preview` | First 120 characters of the session summary |
+
+---
+
+## get_session_detail
+
+Get full details for a specific session, including the complete summary and all observations.
+
+Use `session_context` first to find relevant session IDs.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `session_id` | string | Yes | The session ID to retrieve |
+
+### Response
+
+Returns the full session object with:
+
+- Complete summary (parsed into structured sections)
+- All observations with event type, tool name, timestamps
+- Files modified across the session
+- Prompt and tool input summaries per observation
+
+---
+
+## get_observation
+
+Get a single observation by ID with full content including tool input and response data.
+
+Observation IDs are returned by `get_session_detail`.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `id` | string | Yes | The observation ID |
+
+### Response
+
+Returns the observation with:
+
+- `event` — event type
+- `tool_name` — which tool was called
+- `prompt` — the user's prompt (if captured)
+- `tool_input` — what was sent to the tool
+- `tool_response` — what the tool returned
+- `files_modified` — files touched by this observation

@@ -1,0 +1,90 @@
+---
+title: Deployment
+description: Production Docker Compose, reverse proxy, and backup strategy.
+---
+
+## Docker Compose (production)
+
+The default `docker-compose.yml` works for both local and production use. For remote/public deployments, create a `docker-compose.prod.yml`:
+
+```yaml
+services:
+  yams:
+    image: ghcr.io/saturate/yams:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data/yams:/data
+    environment:
+      - NODE_ENV=production
+      - YAMS_DB_PATH=/data/yams.db
+      - YAMS_JWT_SECRET=change-me-to-a-random-string
+      - QDRANT_URL=http://qdrant:6333
+      - OLLAMA_URL=http://ollama:11434
+    depends_on:
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ./data/ollama:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 3s
+      start_period: 5s
+
+  ollama-pull:
+    image: curlimages/curl:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: >
+      sh -c "curl -fSL http://ollama:11434/api/pull
+      -d '{\"name\":\"nomic-embed-text\",\"stream\":false}'"
+```
+
+Key difference from local: `NODE_ENV=production` enables secure cookies (HTTPS required).
+
+## HTTPS / Reverse proxy
+
+Put YAMS behind a reverse proxy for HTTPS. Cookies are only marked `Secure` when `NODE_ENV=production`, so **localhost works without HTTPS** — but remote deployments need it.
+
+Minimal [Caddy](https://caddyserver.com/) example:
+
+```
+yams.example.com {
+    reverse_proxy localhost:3000
+}
+```
+
+Caddy handles TLS automatically. For nginx or Traefik, configure your usual TLS termination and proxy to port 3000.
+
+## Backups
+
+**SQLite database** at `YAMS_DB_PATH` is the only critical stateful file. Back it up regularly — a simple cron job copying the file works fine since SQLite handles concurrent reads.
+
+**Qdrant data** can be rebuilt by re-ingesting memories. It's a cache of the vector embeddings, not the source of truth.
+
+**Ollama models** are downloaded from the internet and cached locally. They can be re-pulled at any time.
+
+### Backup strategy
+
+```bash
+# Simple daily backup
+cp /path/to/data/yams.db /path/to/backups/yams-$(date +%Y%m%d).db
+```
+
+For production, consider using SQLite's `.backup` command or `sqlite3 /path/to/yams.db ".backup /path/to/backup.db"` for a consistent snapshot.

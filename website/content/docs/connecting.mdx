@@ -1,0 +1,59 @@
+---
+title: Connecting
+description: How to connect Claude Code and other MCP clients to YAMS.
+---
+
+## MCP configuration
+
+YAMS exposes a standard [MCP](https://modelcontextprotocol.io/) endpoint at `/mcp`. Any MCP-compatible client can connect using HTTP transport with a Bearer token.
+
+### Per-project
+
+Create `.mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "yams": {
+      "type": "http",
+      "url": "http://localhost:3000/mcp",
+      "headers": {
+        "Authorization": "Bearer yams_your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+### Global (all projects)
+
+Place the same file at `~/.claude/.mcp.json` so every Claude Code session has access.
+
+## Claude Code plugin
+
+The plugin adds session-end hooks and skills on top of the MCP tools:
+
+```bash
+claude plugin add /path/to/YAMS/plugins/claude-code
+```
+
+### Environment variables
+
+The plugin needs to know where YAMS is running:
+
+| Variable | Description |
+|---|---|
+| `YAMS_URL` | Server URL (e.g. `http://localhost:3000`) |
+| `YAMS_KEY` | API key (`yams_...`) |
+
+Set them in your shell profile or `.env` file.
+
+## Verifying the connection
+
+After connecting, ask Claude Code to run a quick test:
+
+```
+Search my YAMS memories for "test"
+```
+
+If everything is wired up, you'll see results (or an empty list if this is a fresh install). If you see an error about the MCP server being unavailable, check that YAMS is running and the API key is correct.

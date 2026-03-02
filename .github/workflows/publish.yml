@@ -8,6 +8,7 @@ on:
       - "LICENSE"
       - "demo.gif"
       - ".gitignore"
+      - "website/**"
 
 env:
   REGISTRY: ghcr.io

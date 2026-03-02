@@ -1,0 +1,43 @@
+---
+title: Configuration
+description: Environment variables, admin config, TTL, dedup, and privacy settings.
+---
+
+## Environment variables
+
+Set these in your `.env` file or as environment variables in Docker Compose.
+
+| Variable | Default | Description |
+|---|---|---|
+| `YAMS_PORT` | `3000` | Server port |
+| `YAMS_DB_PATH` | `data/yams.db` | SQLite database path |
+| `YAMS_JWT_SECRET` | auto-generated | JWT signing secret for admin sessions |
+| `QDRANT_URL` | `http://localhost:6333` | Qdrant server URL |
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `nomic-embed-text` | Embedding model name |
+| `EMBEDDING_DIMENSIONS` | `768` | Vector dimensions (must match your model) |
+
+## TTL configuration
+
+Default TTLs per scope, configurable via environment variables or admin config:
+
+| Variable | Config key | Default | Description |
+|---|---|---|---|
+| `YAMS_TTL_DEFAULT_SESSION` | `ttl_default_session` | `2592000` (30 days) | Default TTL for session memories |
+| `YAMS_TTL_DEFAULT_PROJECT` | `ttl_default_project` | `7776000` (90 days) | Default TTL for project memories |
+| `YAMS_TTL_DEFAULT_GLOBAL` | `ttl_default_global` | _(none)_ | Default TTL for global memories (forever by default) |
+| `YAMS_TTL_MAX` | `ttl_max` | _(none)_ | Hard ceiling for all TTLs — caps even "forever" memories |
+
+## Dedup configuration
+
+| Variable | Config key | Default | Description |
+|---|---|---|---|
+| `YAMS_DEDUP_THRESHOLD` | `dedup_threshold` | `0.92` | Similarity threshold for duplicate detection (0.5–1.0) |
+
+Higher values = fewer duplicates detected (more strict). Lower values = more aggressive dedup. The default of 0.92 catches near-identical memories while allowing meaningfully different ones through.
+
+## Admin config
+
+Some settings can be managed through the admin UI at `/settings`. These are stored in SQLite and take precedence over environment variables when both are set.
+
+Config keys correspond to the environment variable names with the `YAMS_` prefix removed and lowercased (e.g. `YAMS_DEDUP_THRESHOLD` → `dedup_threshold`).
