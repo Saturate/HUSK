@@ -15,7 +15,7 @@ import {
 import { bus } from "./events.js";
 import { storeMemory } from "./ingest.js";
 
-const log = getLogger(["yams", "compression"]);
+const log = getLogger(["husk", "compression"]);
 
 const FETCH_TIMEOUT_MS = 30_000;
 
@@ -107,7 +107,7 @@ class AnthropicProvider implements CompressionProvider {
 	readonly name = "anthropic";
 
 	private get apiKey(): string {
-		const key = getConfigWithEnv("compression_api_key", "YAMS_COMPRESSION_API_KEY");
+		const key = getConfigWithEnv("compression_api_key", "HUSK_COMPRESSION_API_KEY");
 		if (!key) throw new Error("Anthropic API key not configured for compression");
 		return key;
 	}
@@ -159,7 +159,7 @@ class OpenRouterProvider implements CompressionProvider {
 	readonly name = "openrouter";
 
 	private get apiKey(): string {
-		const key = getConfigWithEnv("compression_api_key", "YAMS_COMPRESSION_API_KEY");
+		const key = getConfigWithEnv("compression_api_key", "HUSK_COMPRESSION_API_KEY");
 		if (!key) throw new Error("OpenRouter API key not configured for compression");
 		return key;
 	}
@@ -292,7 +292,7 @@ export function getCompressionProvider(): CompressionProvider {
 	if (provider) return provider;
 
 	const providerName =
-		getConfigWithEnv("compression_provider", "YAMS_COMPRESSION_PROVIDER") ?? "anthropic";
+		getConfigWithEnv("compression_provider", "HUSK_COMPRESSION_PROVIDER") ?? "anthropic";
 
 	switch (providerName) {
 		case "openrouter":
@@ -317,14 +317,14 @@ export function setCompressionProvider(p: CompressionProvider | null): void {
 
 function getBatchSize(): number {
 	const raw = Number(
-		getConfigWithEnv("compression_batch_size", "YAMS_COMPRESSION_BATCH_SIZE") ?? "20",
+		getConfigWithEnv("compression_batch_size", "HUSK_COMPRESSION_BATCH_SIZE") ?? "20",
 	);
 	return Number.isFinite(raw) ? Math.min(Math.max(raw, 5), 100) : 20;
 }
 
 function getIntervalMinutes(): number {
 	const raw = Number(
-		getConfigWithEnv("compression_interval_minutes", "YAMS_COMPRESSION_INTERVAL_MINUTES") ?? "15",
+		getConfigWithEnv("compression_interval_minutes", "HUSK_COMPRESSION_INTERVAL_MINUTES") ?? "15",
 	);
 	return Number.isFinite(raw) ? Math.min(Math.max(raw, 5), 60) : 15;
 }
@@ -388,7 +388,7 @@ async function tryCompressSession(session: SessionRow): Promise<void> {
 // --- One-time catch-up for sessions missed during downtime ---
 
 export async function runCompressionCycle(): Promise<void> {
-	const compressionMode = getConfigWithEnv("compression_mode", "YAMS_COMPRESSION_MODE") ?? "client";
+	const compressionMode = getConfigWithEnv("compression_mode", "HUSK_COMPRESSION_MODE") ?? "client";
 	if (compressionMode !== "server") return;
 
 	const sessions = getUncompressedSessions();
@@ -416,7 +416,7 @@ export function initCompressionListener(): void {
 	// Trigger 1: Observation count threshold
 	bus.on("observation:created", ({ sessionId, uncompressedCount }) => {
 		const compressionMode =
-			getConfigWithEnv("compression_mode", "YAMS_COMPRESSION_MODE") ?? "client";
+			getConfigWithEnv("compression_mode", "HUSK_COMPRESSION_MODE") ?? "client";
 		if (compressionMode !== "server") return;
 
 		const batchSize = getBatchSize();
@@ -442,7 +442,7 @@ export function initCompressionListener(): void {
 	// Trigger 2: Session end — final flush
 	bus.on("session:ended", (sessionId) => {
 		const compressionMode =
-			getConfigWithEnv("compression_mode", "YAMS_COMPRESSION_MODE") ?? "client";
+			getConfigWithEnv("compression_mode", "HUSK_COMPRESSION_MODE") ?? "client";
 		if (compressionMode !== "server") return;
 
 		const session = getSession(sessionId);
@@ -460,7 +460,7 @@ export function initCompressionListener(): void {
 	staleCheckInterval = setInterval(() => {
 		try {
 			const compressionMode =
-				getConfigWithEnv("compression_mode", "YAMS_COMPRESSION_MODE") ?? "client";
+				getConfigWithEnv("compression_mode", "HUSK_COMPRESSION_MODE") ?? "client";
 			if (compressionMode !== "server") return;
 
 			const intervalMinutes = getIntervalMinutes();

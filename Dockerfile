@@ -34,7 +34,7 @@ RUN bun install --frozen-lockfile --production
 # ── Stage 3: Production (Alpine) ─────────────────────────────
 FROM oven/bun:1-alpine
 
-RUN addgroup -S yams && adduser -S yams -G yams && apk add --no-cache su-exec
+RUN addgroup -S husk && adduser -S husk -G husk && apk add --no-cache su-exec
 
 WORKDIR /app/server
 
@@ -54,12 +54,12 @@ COPY --from=build /app/server/bunfig.toml ./bunfig.toml
 COPY --from=build /app/server/ui/dist ./ui/dist
 
 # SQLite data volume
-RUN mkdir -p /data && chown yams:yams /data
+RUN mkdir -p /data && chown husk:husk /data
 
 COPY docker-entrypoint.sh /usr/local/bin/
 
-ENV YAMS_DB_PATH=/data/yams.db
-ENV YAMS_PORT=3000
+ENV HUSK_DB_PATH=/data/husk.db
+ENV HUSK_PORT=3000
 
 EXPOSE 3000
 

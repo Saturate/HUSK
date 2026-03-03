@@ -23,7 +23,7 @@ import { getProvider } from "./embeddings.js";
 import { StoreMemoryError, isDuplicate, storeMemory } from "./ingest.js";
 import { deletePoint, searchMemories } from "./qdrant.js";
 
-const log = getLogger(["yams", "mcp"]);
+const log = getLogger(["husk", "mcp"]);
 
 const CHARS_PER_TOKEN = 4;
 
@@ -48,7 +48,7 @@ function fitTokenBudget<T>(memories: T[], maxTokens: number): T[] {
 
 function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 	const server = new McpServer({
-		name: "yams",
+		name: "husk",
 		version: "0.1.0",
 	});
 
@@ -549,7 +549,7 @@ function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 						role: "user" as const,
 						content: {
 							type: "text" as const,
-							text: `Review and clean up my YAMS memories (${filterDesc}). Follow these steps:
+							text: `Review and clean up my HUSK memories (${filterDesc}). Follow these steps:
 
 1. Use list_memories to fetch all memories${args.project ? ` for project "${args.project}"` : ""}${args.scope ? ` with scope "${args.scope}"` : ""}. Page through all results if there are more than the limit.
 

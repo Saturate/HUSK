@@ -32,7 +32,7 @@ const mockProvider: EmbeddingProvider = {
 };
 
 const mockQdrantClient = {
-	getCollections: () => Promise.resolve({ collections: [{ name: "yams_memories" }] }),
+	getCollections: () => Promise.resolve({ collections: [{ name: "husk_memories" }] }),
 	upsert: mock(() => Promise.resolve({})),
 	search: mockSearch,
 	delete: mockDelete,

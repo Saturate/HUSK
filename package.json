@@ -1,5 +1,5 @@
 {
-	"name": "yams",
+	"name": "husk",
 	"private": true,
 	"workspaces": ["server", "plugins/*", "website"]
 }

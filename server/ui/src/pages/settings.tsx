@@ -86,7 +86,7 @@ export function SettingsPage() {
 													fontFamily: t.dark["font-sans"],
 												}}
 											>
-												YAMS
+												HUSK
 											</span>
 											<span
 												className="rounded px-1.5 py-0.5 text-[10px]"
@@ -344,7 +344,7 @@ function HooksConfigSection() {
 			<p className="mb-4 text-sm text-muted-foreground">
 				Copy the hooks config for an API key and paste it into your{" "}
 				<code className="rounded bg-muted px-1 py-0.5 text-xs">.claude/settings.json</code>. Set the{" "}
-				<code className="rounded bg-muted px-1 py-0.5 text-xs">YAMS_API_KEY</code> environment
+				<code className="rounded bg-muted px-1 py-0.5 text-xs">HUSK_API_KEY</code> environment
 				variable to your raw API key.
 			</p>
 			{keysQuery.isLoading ? (

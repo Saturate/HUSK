@@ -365,7 +365,7 @@ describe("Security: Session Capture", () => {
 				body: JSON.stringify({ session_id: "jwt-sess" }),
 			});
 
-			// JWT tokens don't start with 'yams_' so validateBearerKey rejects them
+			// JWT tokens don't start with 'husk_' so validateBearerKey rejects them
 			expect(res.status).toBe(401);
 		});
 
@@ -582,8 +582,8 @@ describe("Security: Session Capture", () => {
 			});
 
 			const body = await res.text();
-			// Should use $YAMS_API_KEY variable, not the actual key
-			expect(body).toContain("$YAMS_API_KEY");
+			// Should use $HUSK_API_KEY variable, not the actual key
+			expect(body).toContain("$HUSK_API_KEY");
 			expect(body).not.toContain(key.key);
 		});
 	});

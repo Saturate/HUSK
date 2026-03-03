@@ -38,7 +38,7 @@ export function SetupPage() {
 	}
 
 	return (
-		<AuthLayout title="YAMS Setup" description="Create the admin account to get started.">
+		<AuthLayout title="HUSK Setup" description="Create the admin account to get started.">
 			{alreadyDone ? (
 				<div className="space-y-4">
 					<p className="text-sm text-muted-foreground">Setup already completed.</p>

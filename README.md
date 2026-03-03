@@ -1,27 +1,25 @@
-# 🍠 YAMS
+# HUSK
 
-- **Y**our **A**I **M**emory **S**ystem
-- **Y**et **A**nother **M**emory **S**tore
+- **H**elpful **U**niversal **S**torage for **K**nowledge
+- **H**andy **U**tility for **S**aving **K**nowledge
 - ...you get the idea
-
-Nutritious context for your AI.
 
 Self-hosted memory layer for AI coding assistants. Captures what you work on, remembers cross-project patterns, and surfaces relevant context - across all your machines and tools.
 
 <p align="center">
-  <img src="demo.gif" alt="YAMS demo" width="640">
+  <img src="demo.gif" alt="HUSK demo" width="640">
 </p>
 
 ## Quick start
 
 ```bash
 # Clone and start all services
-git clone https://github.com/Saturate/YAMS.git
-cd YAMS
+git clone https://github.com/Saturate/HUSK.git
+cd HUSK
 docker compose up -d
 ```
 
-This starts YAMS, Qdrant, and Ollama - and auto-pulls the embedding model on first run.
+This starts HUSK, Qdrant, and Ollama - and auto-pulls the embedding model on first run.
 
 Open `http://localhost:3000/setup` to create your admin account.
 
@@ -29,7 +27,7 @@ Open `http://localhost:3000/setup` to create your admin account.
 
 1. Log in at `http://localhost:3000`
 2. Go to **API Keys** → **Create Key**
-3. Copy the key (`yams_...`) - you won't see it again
+3. Copy the key (`husk_...`) - you won't see it again
 
 ### Connect Claude Code
 
@@ -40,11 +38,11 @@ Add a `.mcp.json` to your project root (or `~/.claude/.mcp.json` for global acce
 ```json
 {
   "mcpServers": {
-    "yams": {
+    "husk": {
       "type": "http",
       "url": "http://localhost:3000/mcp",
       "headers": {
-        "Authorization": "Bearer yams_your-api-key-here"
+        "Authorization": "Bearer husk_your-api-key-here"
       }
     }
   }
@@ -56,10 +54,10 @@ Restart Claude Code and the MCP tools (`search`, `remember`, `list_projects`, `s
 **Option B: Plugin** (includes session-end hooks and skills)
 
 ```bash
-claude plugin add /path/to/YAMS/plugins/claude-code
+claude plugin add /path/to/HUSK/plugins/claude-code
 ```
 
-Set `YAMS_URL` and `YAMS_KEY` environment variables to your server URL and API key.
+Set `HUSK_URL` and `HUSK_KEY` environment variables to your server URL and API key.
 
 ## How it works
 
@@ -81,9 +79,9 @@ Copy `.env.example` to `.env` and adjust as needed. All variables have sensible 
 
 | Variable               | Default                  | Description                          |
 | ---------------------- | ------------------------ | ------------------------------------ |
-| `YAMS_PORT`            | `3000`                   | Server port                          |
-| `YAMS_DB_PATH`         | `data/yams.db`           | SQLite database path                 |
-| `YAMS_JWT_SECRET`      | auto-generated           | JWT signing secret                   |
+| `HUSK_PORT`            | `3000`                   | Server port                          |
+| `HUSK_DB_PATH`         | `data/husk.db`           | SQLite database path                 |
+| `HUSK_JWT_SECRET`      | auto-generated           | JWT signing secret                   |
 | `QDRANT_URL`           | `http://localhost:6333`  | Qdrant server URL                    |
 | `OLLAMA_URL`           | `http://localhost:11434` | Ollama server URL                    |
 | `OLLAMA_MODEL`         | `nomic-embed-text`       | Embedding model                      |
@@ -97,16 +95,16 @@ For remote/public deployments, create a `docker-compose.prod.yml`:
 
 ```yaml
 services:
-  yams:
-    image: ghcr.io/saturate/yams:latest
+  husk:
+    image: ghcr.io/saturate/husk:latest
     ports:
       - "3000:3000"
     volumes:
-      - ./data/yams:/data
+      - ./data/husk:/data
     environment:
       - NODE_ENV=production
-      - YAMS_DB_PATH=/data/yams.db
-      - YAMS_JWT_SECRET=change-me-to-a-random-string
+      - HUSK_DB_PATH=/data/husk.db
+      - HUSK_JWT_SECRET=change-me-to-a-random-string
       - QDRANT_URL=http://qdrant:6333
       - OLLAMA_URL=http://ollama:11434
     depends_on:
@@ -148,12 +146,12 @@ services:
 Put it behind a reverse proxy for HTTPS. Minimal Caddy example:
 
 ```
-yams.example.com {
+husk.example.com {
     reverse_proxy localhost:3000
 }
 ```
 
-**Backups:** The SQLite database at `YAMS_DB_PATH` is the only stateful file. Back it up regularly. Qdrant data can be rebuilt by re-ingesting.
+**Backups:** The SQLite database at `HUSK_DB_PATH` is the only stateful file. Back it up regularly. Qdrant data can be rebuilt by re-ingesting.
 
 ## Development
 

@@ -26,7 +26,7 @@ import type { AppEnv } from "./env.js";
 import { resetPrivacyCache } from "./privacy.js";
 import { deletePoint, searchMemories } from "./qdrant.js";
 
-const log = getLogger(["yams", "admin"]);
+const log = getLogger(["husk", "admin"]);
 
 const admin = new Hono<AppEnv>();
 

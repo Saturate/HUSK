@@ -28,7 +28,7 @@ export type { ValidatedApiKey } from "./env.js";
 export type { AppEnv } from "./env.js";
 export type { UserRole } from "./env.js";
 
-const COOKIE_NAME = "yams_session";
+const COOKIE_NAME = "husk_session";
 
 function getSecretKey(): Uint8Array {
 	const secret = getOrCreateJwtSecret();
@@ -43,12 +43,12 @@ export async function jwtMiddleware(c: Context<AppEnv>, next: Next) {
 	const header = c.req.header("Authorization");
 	const token = cookieToken ?? (header?.startsWith("Bearer ") ? header.slice(7) : undefined);
 
-	if (!token || token.startsWith("yams_")) {
+	if (!token || token.startsWith("husk_")) {
 		return c.json({ error: "Authorization required." }, 401);
 	}
 
 	try {
-		const { payload } = await jwtVerify(token, getSecretKey(), { issuer: "yams" });
+		const { payload } = await jwtVerify(token, getSecretKey(), { issuer: "husk" });
 		c.set("userId", payload.sub as string);
 		c.set("username", payload.username as string);
 		c.set("role", (payload.role as UserRole) ?? "user");
@@ -69,7 +69,7 @@ export async function validateBearerKey(
 	}
 
 	const token = authHeader.slice(7);
-	if (!token.startsWith("yams_")) {
+	if (!token.startsWith("husk_")) {
 		return { error: "Invalid API key." };
 	}
 
@@ -110,7 +110,7 @@ export async function bearerKeyMiddleware(c: Context<AppEnv>, next: Next) {
 export async function signSessionToken(userId: string, username: string, role: UserRole) {
 	return new SignJWT({ sub: userId, username, role })
 		.setProtectedHeader({ alg: "HS256" })
-		.setIssuer("yams")
+		.setIssuer("husk")
 		.setExpirationTime("24h")
 		.sign(getSecretKey());
 }
@@ -205,7 +205,7 @@ keys.post("/", async (c) => {
 		return c.json({ error: "Label is required." }, 400);
 	}
 
-	const rawKey = `yams_${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url")}`;
+	const rawKey = `husk_${Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("base64url")}`;
 	const hashBuffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rawKey));
 	const keyHash = Buffer.from(hashBuffer).toString("hex");
 	const keyPrefix = rawKey.slice(0, 12);
@@ -279,7 +279,7 @@ keys.get("/:id/hooks-config", (c) => {
 						{
 							type: "http",
 							url: `${origin}/hooks/session-start`,
-							headers: { Authorization: "Bearer $YAMS_API_KEY" },
+							headers: { Authorization: "Bearer $HUSK_API_KEY" },
 							timeout: 5,
 						},
 					],
@@ -291,7 +291,7 @@ keys.get("/:id/hooks-config", (c) => {
 						{
 							type: "http",
 							url: `${origin}/hooks/observation`,
-							headers: { Authorization: "Bearer $YAMS_API_KEY" },
+							headers: { Authorization: "Bearer $HUSK_API_KEY" },
 							timeout: 2,
 						},
 					],
@@ -303,7 +303,7 @@ keys.get("/:id/hooks-config", (c) => {
 						{
 							type: "http",
 							url: `${origin}/hooks/observation`,
-							headers: { Authorization: "Bearer $YAMS_API_KEY" },
+							headers: { Authorization: "Bearer $HUSK_API_KEY" },
 							timeout: 2,
 						},
 					],
@@ -315,7 +315,7 @@ keys.get("/:id/hooks-config", (c) => {
 						{
 							type: "http",
 							url: `${origin}/hooks/observation`,
-							headers: { Authorization: "Bearer $YAMS_API_KEY" },
+							headers: { Authorization: "Bearer $HUSK_API_KEY" },
 							timeout: 2,
 						},
 					],
@@ -327,7 +327,7 @@ keys.get("/:id/hooks-config", (c) => {
 						{
 							type: "http",
 							url: `${origin}/hooks/session-end`,
-							headers: { Authorization: "Bearer $YAMS_API_KEY" },
+							headers: { Authorization: "Bearer $HUSK_API_KEY" },
 							timeout: 5,
 						},
 					],

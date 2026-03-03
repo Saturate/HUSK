@@ -1,5 +1,5 @@
 {
-	"name": "@yams/server",
+	"name": "@husk/server",
 	"private": true,
 	"type": "module",
 	"scripts": {

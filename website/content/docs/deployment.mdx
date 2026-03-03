@@ -9,16 +9,16 @@ The default `docker-compose.yml` works for both local and production use. For re
 
 ```yaml
 services:
-  yams:
-    image: ghcr.io/saturate/yams:latest
+  husk:
+    image: ghcr.io/saturate/husk:latest
     ports:
       - "3000:3000"
     volumes:
-      - ./data/yams:/data
+      - ./data/husk:/data
     environment:
       - NODE_ENV=production
-      - YAMS_DB_PATH=/data/yams.db
-      - YAMS_JWT_SECRET=change-me-to-a-random-string
+      - HUSK_DB_PATH=/data/husk.db
+      - HUSK_JWT_SECRET=change-me-to-a-random-string
       - QDRANT_URL=http://qdrant:6333
       - OLLAMA_URL=http://ollama:11434
     depends_on:
@@ -60,12 +60,12 @@ Key difference from local: `NODE_ENV=production` enables secure cookies (HTTPS r
 
 ## HTTPS / Reverse proxy
 
-Put YAMS behind a reverse proxy for HTTPS. Cookies are only marked `Secure` when `NODE_ENV=production`, so **localhost works without HTTPS** — but remote deployments need it.
+Put HUSK behind a reverse proxy for HTTPS. Cookies are only marked `Secure` when `NODE_ENV=production`, so **localhost works without HTTPS** — but remote deployments need it.
 
 Minimal [Caddy](https://caddyserver.com/) example:
 
 ```
-yams.example.com {
+husk.example.com {
     reverse_proxy localhost:3000
 }
 ```
@@ -74,7 +74,7 @@ Caddy handles TLS automatically. For nginx or Traefik, configure your usual TLS 
 
 ## Backups
 
-**SQLite database** at `YAMS_DB_PATH` is the only critical stateful file. Back it up regularly — a simple cron job copying the file works fine since SQLite handles concurrent reads.
+**SQLite database** at `HUSK_DB_PATH` is the only critical stateful file. Back it up regularly — a simple cron job copying the file works fine since SQLite handles concurrent reads.
 
 **Qdrant data** can be rebuilt by re-ingesting memories. It's a cache of the vector embeddings, not the source of truth.
 
@@ -84,7 +84,7 @@ Caddy handles TLS automatically. For nginx or Traefik, configure your usual TLS 
 
 ```bash
 # Simple daily backup
-cp /path/to/data/yams.db /path/to/backups/yams-$(date +%Y%m%d).db
+cp /path/to/data/husk.db /path/to/backups/husk-$(date +%Y%m%d).db
 ```
 
-For production, consider using SQLite's `.backup` command or `sqlite3 /path/to/yams.db ".backup /path/to/backup.db"` for a consistent snapshot.
+For production, consider using SQLite's `.backup` command or `sqlite3 /path/to/husk.db ".backup /path/to/backup.db"` for a consistent snapshot.

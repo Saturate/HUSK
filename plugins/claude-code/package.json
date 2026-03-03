@@ -1,5 +1,5 @@
 {
-	"name": "@yams/plugin-claude-code",
+	"name": "@husk/plugin-claude-code",
 	"private": true,
 	"version": "0.0.0"
 }

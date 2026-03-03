@@ -1,8 +1,8 @@
 import { getLogger } from "@logtape/logtape";
 import { QdrantClient } from "@qdrant/js-client-rest";
 
-const log = getLogger(["yams", "qdrant"]);
-const COLLECTION_NAME = "yams_memories";
+const log = getLogger(["husk", "qdrant"]);
+const COLLECTION_NAME = "husk_memories";
 
 let client: QdrantClient | null = null;
 

@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 
-const log = getLogger(["yams", "embeddings"]);
+const log = getLogger(["husk", "embeddings"]);
 
 export interface EmbeddingProvider {
 	embed(text: string): Promise<number[]>;

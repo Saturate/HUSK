@@ -5,7 +5,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 	return (
 		<HomeLayout
 			nav={{
-				title: "YAMS",
+				title: "HUSK",
 				url: "/",
 			}}
 			links={[
@@ -20,7 +20,7 @@ export default function Layout({ children }: { children: ReactNode }) {
 						</svg>
 					),
 					text: "GitHub",
-					url: "https://github.com/Saturate/YAMS",
+					url: "https://github.com/Saturate/HUSK",
 					external: true,
 				},
 			]}

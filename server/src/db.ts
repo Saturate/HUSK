@@ -9,7 +9,7 @@ export function getDb(): Database {
 }
 
 export function initDb(path?: string): Database {
-	const dbPath = path ?? process.env.YAMS_DB_PATH ?? "data/yams.db";
+	const dbPath = path ?? process.env.HUSK_DB_PATH ?? "data/husk.db";
 
 	if (dbPath !== ":memory:") {
 		mkdirSync(dirname(dbPath), { recursive: true });
@@ -910,7 +910,7 @@ export function getRecentSessionSummaries(opts: {
 // --- JWT Secret ---
 
 export function getOrCreateJwtSecret(): string {
-	const envSecret = process.env.YAMS_JWT_SECRET;
+	const envSecret = process.env.HUSK_JWT_SECRET;
 	if (envSecret) return envSecret;
 
 	const row = db

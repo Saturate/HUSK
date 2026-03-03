@@ -5,7 +5,7 @@ import { setSessionCookie, signSessionToken } from "./auth.js";
 import { createUser, getUserByOAuth } from "./db.js";
 import type { UserRole } from "./env.js";
 
-const log = getLogger(["yams", "oauth"]);
+const log = getLogger(["husk", "oauth"]);
 
 interface GitHubTokenResponse {
 	access_token: string;

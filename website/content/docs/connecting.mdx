@@ -1,11 +1,11 @@
 ---
 title: Connecting
-description: How to connect Claude Code and other MCP clients to YAMS.
+description: How to connect Claude Code and other MCP clients to HUSK.
 ---
 
 ## MCP configuration
 
-YAMS exposes a standard [MCP](https://modelcontextprotocol.io/) endpoint at `/mcp`. Any MCP-compatible client can connect using HTTP transport with a Bearer token.
+HUSK exposes a standard [MCP](https://modelcontextprotocol.io/) endpoint at `/mcp`. Any MCP-compatible client can connect using HTTP transport with a Bearer token.
 
 ### Per-project
 
@@ -14,11 +14,11 @@ Create `.mcp.json` in your project root:
 ```json
 {
   "mcpServers": {
-    "yams": {
+    "husk": {
       "type": "http",
       "url": "http://localhost:3000/mcp",
       "headers": {
-        "Authorization": "Bearer yams_your-api-key-here"
+        "Authorization": "Bearer husk_your-api-key-here"
       }
     }
   }
@@ -34,17 +34,17 @@ Place the same file at `~/.claude/.mcp.json` so every Claude Code session has ac
 The plugin adds session-end hooks and skills on top of the MCP tools:
 
 ```bash
-claude plugin add /path/to/YAMS/plugins/claude-code
+claude plugin add /path/to/HUSK/plugins/claude-code
 ```
 
 ### Environment variables
 
-The plugin needs to know where YAMS is running:
+The plugin needs to know where HUSK is running:
 
 | Variable | Description |
 |---|---|
-| `YAMS_URL` | Server URL (e.g. `http://localhost:3000`) |
-| `YAMS_KEY` | API key (`yams_...`) |
+| `HUSK_URL` | Server URL (e.g. `http://localhost:3000`) |
+| `HUSK_KEY` | API key (`husk_...`) |
 
 Set them in your shell profile or `.env` file.
 
@@ -53,7 +53,7 @@ Set them in your shell profile or `.env` file.
 After connecting, ask Claude Code to run a quick test:
 
 ```
-Search my YAMS memories for "test"
+Search my HUSK memories for "test"
 ```
 
-If everything is wired up, you'll see results (or an empty list if this is a fresh install). If you see an error about the MCP server being unavailable, check that YAMS is running and the API key is correct.
+If everything is wired up, you'll see results (or an empty list if this is a fresh install). If you see an error about the MCP server being unavailable, check that HUSK is running and the API key is correct.

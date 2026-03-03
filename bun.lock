@@ -6,11 +6,11 @@
       "name": "yams",
     },
     "plugins/claude-code": {
-      "name": "@yams/plugin-claude-code",
+      "name": "@husk/plugin-claude-code",
       "version": "0.0.0",
     },
     "server": {
-      "name": "@yams/server",
+      "name": "@husk/server",
       "dependencies": {
         "@logtape/hono": "^2.0.2",
         "@logtape/logtape": "^2.0.2",
@@ -26,7 +26,7 @@
       },
     },
     "website": {
-      "name": "@yams/website",
+      "name": "@husk/website",
       "version": "0.0.0",
       "dependencies": {
         "@react-three/drei": "^10",
@@ -143,6 +143,12 @@
     "@fumadocs/tailwind": ["@fumadocs/tailwind@0.0.3", "", { "dependencies": { "postcss-selector-parser": "^7.1.1" }, "peerDependencies": { "tailwindcss": "^4.0.0" }, "optionalPeers": ["tailwindcss"] }, "sha512-/FWcggMz9BhoX+13xBoZLX+XX9mYvJ50dkTqy3IfocJqua65ExcsKfxwKH8hgTO3vA5KnWv4+4jU7LaW2AjAmQ=="],
 
     "@hono/node-server": ["@hono/node-server@1.19.9", "", { "peerDependencies": { "hono": "^4" } }, "sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw=="],
+
+    "@husk/plugin-claude-code": ["@husk/plugin-claude-code@workspace:plugins/claude-code"],
+
+    "@husk/server": ["@husk/server@workspace:server"],
+
+    "@husk/website": ["@husk/website@workspace:website"],
 
     "@img/colour": ["@img/colour@1.1.0", "", {}, "sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ=="],
 
@@ -411,12 +417,6 @@
     "@use-gesture/react": ["@use-gesture/react@10.3.1", "", { "dependencies": { "@use-gesture/core": "10.3.1" }, "peerDependencies": { "react": ">= 16.8.0" } }, "sha512-Yy19y6O2GJq8f7CHf7L0nxL8bf4PZCPaVOCgJrusOeFHY1LvHgYXnmnXg6N5iwAnbgbZCDjo60SiM6IPJi9C5g=="],
 
     "@webgpu/types": ["@webgpu/types@0.1.69", "", {}, "sha512-RPmm6kgRbI8e98zSD3RVACvnuktIja5+yLgDAkTmxLr90BEwdTXRQWNLF3ETTTyH/8mKhznZuN5AveXYFEsMGQ=="],
-
-    "@yams/plugin-claude-code": ["@yams/plugin-claude-code@workspace:plugins/claude-code"],
-
-    "@yams/server": ["@yams/server@workspace:server"],
-
-    "@yams/website": ["@yams/website@workspace:website"],
 
     "accepts": ["accepts@2.0.0", "", { "dependencies": { "mime-types": "^3.0.0", "negotiator": "^1.0.0" } }, "sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng=="],
 

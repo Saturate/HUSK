@@ -41,7 +41,7 @@ describe("keys/me", () => {
 
 		const res = await app.request("/api/keys/me", {
 			method: "GET",
-			headers: { Authorization: "Bearer yams_invalidkey123" },
+			headers: { Authorization: "Bearer husk_invalidkey123" },
 		});
 		expect(res.status).toBe(401);
 	});

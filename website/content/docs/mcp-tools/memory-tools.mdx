@@ -21,7 +21,7 @@ Search memories by semantic similarity. Returns the most relevant memories for a
 
 ### Token budgeting
 
-When `max_tokens` is set, YAMS fetches up to 50 results internally and returns as many as fit within the token budget. This lets the AI client say "give me as much context as you can in 2000 tokens" without having to guess a limit.
+When `max_tokens` is set, HUSK fetches up to 50 results internally and returns as many as fit within the token budget. This lets the AI client say "give me as much context as you can in 2000 tokens" without having to guess a limit.
 
 Token estimates use ~4 characters per token.
 
@@ -56,7 +56,7 @@ Store a new memory. Checks for duplicates automatically — if a similar memory 
 
 ### Dedup behavior
 
-When storing, YAMS embeds the content and searches for existing memories from the same user. If the closest match scores above the dedup threshold (default 0.92), the existing memory is returned with `duplicate: true`.
+When storing, HUSK embeds the content and searches for existing memories from the same user. If the closest match scores above the dedup threshold (default 0.92), the existing memory is returned with `duplicate: true`.
 
 Use `force: true` to skip this check, or `replace: "id"` to explicitly overwrite a specific memory.
 

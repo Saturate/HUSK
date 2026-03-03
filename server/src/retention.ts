@@ -2,7 +2,7 @@ import { getLogger } from "@logtape/logtape";
 import { deleteMemoriesBatch, getExpiredMemoryIds } from "./db.js";
 import { deletePoint } from "./qdrant.js";
 
-const log = getLogger(["yams", "retention"]);
+const log = getLogger(["husk", "retention"]);
 
 const SWEEP_INTERVAL_MS = 60 * 60_000; // 1 hour
 const BATCH_SIZE = 100;

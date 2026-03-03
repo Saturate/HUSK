@@ -16,7 +16,7 @@ export async function initLogging(): Promise<void> {
 		},
 		loggers: [
 			{ category: ["logtape", "meta"], sinks: ["console"], lowestLevel: "warning" },
-			{ category: ["yams"], sinks: ["console"], lowestLevel: "info" },
+			{ category: ["husk"], sinks: ["console"], lowestLevel: "info" },
 		],
 	});
 }

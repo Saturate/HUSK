@@ -1,11 +1,11 @@
 #!/bin/bash
-# YAMS SessionEnd hook - records session metadata as a memory
+# HUSK SessionEnd hook - records session metadata as a memory
 # Receives session event JSON on stdin
 
 set -euo pipefail
 
-# Bail if YAMS isn't configured
-[ -z "${YAMS_URL:-}" ] || [ -z "${YAMS_KEY:-}" ] && exit 0
+# Bail if HUSK isn't configured
+[ -z "${HUSK_URL:-}" ] || [ -z "${HUSK_KEY:-}" ] && exit 0
 
 SESSION_DATA=$(cat)
 CWD=$(echo "$SESSION_DATA" | jq -r '.cwd // empty')
@@ -22,8 +22,8 @@ fi
 
 PROJECT_NAME=$(basename "${CWD:-unknown}")
 
-curl -sf -X POST "${YAMS_URL}/ingest" \
-	-H "Authorization: Bearer ${YAMS_KEY}" \
+curl -sf -X POST "${HUSK_URL}/ingest" \
+	-H "Authorization: Bearer ${HUSK_KEY}" \
 	-H "Content-Type: application/json" \
 	-d "$(jq -n \
 		--arg summary "Coding session on ${PROJECT_NAME} (${REASON})" \

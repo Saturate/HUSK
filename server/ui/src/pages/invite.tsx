@@ -53,7 +53,7 @@ export function InvitePage() {
 
 	if (inviteQuery.isLoading) {
 		return (
-			<AuthLayout title="YAMS" description="Validating invite...">
+			<AuthLayout title="HUSK" description="Validating invite...">
 				<p className="text-sm text-muted-foreground">Loading...</p>
 			</AuthLayout>
 		);
@@ -65,7 +65,7 @@ export function InvitePage() {
 				? inviteQuery.error.message
 				: "Invalid or expired invite link.";
 		return (
-			<AuthLayout title="YAMS" description="Invite">
+			<AuthLayout title="HUSK" description="Invite">
 				<div className="rounded-md border border-red-800 bg-red-950 px-3 py-2 text-sm text-red-400">
 					{msg}
 				</div>
@@ -79,7 +79,7 @@ export function InvitePage() {
 	const invite = inviteQuery.data;
 
 	return (
-		<AuthLayout title="YAMS" description="Create your account">
+		<AuthLayout title="HUSK" description="Create your account">
 			<div className="mb-4 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
 				Invited as <strong>{invite?.email}</strong>
 			</div>

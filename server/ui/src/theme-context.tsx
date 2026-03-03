@@ -1,7 +1,7 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useState } from "react";
 import { DEFAULT_THEME, type ThemeDefinition, getTheme, themes } from "./themes";
 
-const STORAGE_KEY = "yams_theme";
+const STORAGE_KEY = "husk_theme";
 
 interface ThemeContextValue {
 	theme: ThemeDefinition;
@@ -12,7 +12,7 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function loadFonts(theme: ThemeDefinition) {
-	for (const el of document.querySelectorAll("link[data-yams-fonts]")) {
+	for (const el of document.querySelectorAll("link[data-husk-fonts]")) {
 		el.remove();
 	}
 
@@ -22,7 +22,7 @@ function loadFonts(theme: ThemeDefinition) {
 	const link = document.createElement("link");
 	link.rel = "stylesheet";
 	link.href = `https://fonts.googleapis.com/css2?family=${families}&display=swap`;
-	link.setAttribute("data-yams-fonts", theme.id);
+	link.setAttribute("data-husk-fonts", theme.id);
 	document.head.appendChild(link);
 }
 

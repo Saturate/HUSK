@@ -22,7 +22,7 @@ cd server/ui && bun install && cd ../..
 cd server && bun run dev
 ```
 
-The dev compose file starts only Qdrant and Ollama — the YAMS server runs directly on your machine for fast iteration.
+The dev compose file starts only Qdrant and Ollama — the HUSK server runs directly on your machine for fast iteration.
 
 ## Tests
 
@@ -41,8 +41,8 @@ This runs Biome for linting and formatting.
 ## Project structure
 
 ```
-YAMS/
-├── server/           # Main YAMS server (Bun + Hono)
+HUSK/
+├── server/           # Main HUSK server (Bun + Hono)
 │   ├── src/          # Server source code
 │   └── ui/           # Admin UI (separate lockfile)
 ├── plugins/

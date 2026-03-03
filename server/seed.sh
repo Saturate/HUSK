@@ -1,6 +1,6 @@
 #!/bin/bash
-# Seed YAMS with ~500 fake memories across multiple projects
-API_KEY="yams_5I-0md8QHt21-RxMp1RgcIJhjmACUTfUqByOjHU1UWY"
+# Seed HUSK with ~500 fake memories across multiple projects
+API_KEY="husk_5I-0md8QHt21-RxMp1RgcIJhjmACUTfUqByOjHU1UWY"
 BASE="http://127.0.0.1:3333"
 
 PROJECTS=(

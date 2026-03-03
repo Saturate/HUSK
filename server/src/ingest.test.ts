@@ -15,7 +15,7 @@ const mockProvider: EmbeddingProvider = {
 };
 
 const mockQdrantClient = {
-	getCollections: () => Promise.resolve({ collections: [{ name: "yams_memories" }] }),
+	getCollections: () => Promise.resolve({ collections: [{ name: "husk_memories" }] }),
 	upsert: mockUpsert,
 } as unknown as import("@qdrant/js-client-rest").QdrantClient;
 
@@ -234,7 +234,7 @@ describe("POST /ingest", () => {
 		expect(mockUpsert).toHaveBeenCalledTimes(1);
 
 		const call = mockUpsert.mock.calls[0] as unknown[];
-		expect(call[0]).toBe("yams_memories");
+		expect(call[0]).toBe("husk_memories");
 		const upsertData = call[1] as { points: Array<{ payload: Record<string, unknown> }> };
 		const point = upsertData.points[0];
 		expect(point).toBeDefined();

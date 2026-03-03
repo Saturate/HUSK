@@ -15,7 +15,7 @@ import type { AppEnv } from "./env.js";
 import { bus } from "./events.js";
 import { applyPrivacyFilters } from "./privacy.js";
 
-const log = getLogger(["yams", "sessions"]);
+const log = getLogger(["husk", "sessions"]);
 
 const SKIPPED_TOOLS = new Set(["Read", "Glob", "Grep"]);
 
@@ -28,7 +28,7 @@ const MAX_FIELD_LENGTH = 1024;
 const WRITE_TOOLS = new Set(["Edit", "Write", "MultiEdit", "NotebookEdit"]);
 
 function getMemoryMode(): string {
-	return getConfigWithEnv("memory_mode", "YAMS_MEMORY_MODE") ?? "simple";
+	return getConfigWithEnv("memory_mode", "HUSK_MEMORY_MODE") ?? "simple";
 }
 
 // --- Observation enrichment (deterministic, no LLM) ---

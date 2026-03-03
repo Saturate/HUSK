@@ -96,7 +96,7 @@ describe("invites", () => {
 
 		// Session cookie should be set
 		const cookie = acceptRes.headers.get("set-cookie") ?? "";
-		expect(cookie).toContain("yams_session=");
+		expect(cookie).toContain("husk_session=");
 	});
 
 	test("invite cannot be used twice", async () => {

@@ -29,7 +29,7 @@ export async function getToken(testApp: typeof app, username = "admin", password
 	});
 	// Extract JWT from the httpOnly cookie
 	const setCookie = res.headers.get("set-cookie") ?? "";
-	const match = setCookie.match(/yams_session=([^;]+)/);
+	const match = setCookie.match(/husk_session=([^;]+)/);
 	const token = match?.[1];
 	if (!token) throw new Error("No session cookie in login response");
 	return token;

@@ -17,7 +17,7 @@ Every memory has a scope that determines its visibility and default lifetime:
 
 Projects are identified by **git remote URL**. This means the same project is recognized regardless of where the repo is checked out — different machines, different paths, same project.
 
-When storing a memory with `scope: "project"`, the `project` field should be the git remote (e.g. `git@github.com:Saturate/YAMS.git`). The Claude Code plugin handles this automatically.
+When storing a memory with `scope: "project"`, the `project` field should be the git remote (e.g. `git@github.com:Saturate/HUSK.git`). The Claude Code plugin handles this automatically.
 
 ## TTL and expiry
 
@@ -25,16 +25,16 @@ Memories expire based on their scope's default TTL, unless overridden:
 
 - **Custom TTL**: Pass `ttl` (in seconds) when storing to override the default
 - **Explicit forever**: Pass `ttl: null` to store a memory that never expires regardless of scope
-- **Admin max**: The `YAMS_TTL_MAX` config caps all TTLs (even "forever") to a ceiling value
+- **Admin max**: The `HUSK_TTL_MAX` config caps all TTLs (even "forever") to a ceiling value
 
 Expired memories are filtered out at query time — they're still in the database but won't appear in search results.
 
 ## Duplicate detection
 
-Before storing a new memory, YAMS checks for semantically similar existing memories from the same user. If a match is found above the dedup threshold (default: 0.92 similarity), the existing memory is returned instead of creating a duplicate.
+Before storing a new memory, HUSK checks for semantically similar existing memories from the same user. If a match is found above the dedup threshold (default: 0.92 similarity), the existing memory is returned instead of creating a duplicate.
 
 You can:
 
 - **Force store**: Pass `force: true` to skip dedup and store anyway
 - **Replace**: Pass `replace: "memory-id"` to overwrite an existing memory's content
-- **Adjust threshold**: Set `YAMS_DEDUP_THRESHOLD` (0.5–1.0) to make dedup more or less aggressive
+- **Adjust threshold**: Set `HUSK_DEDUP_THRESHOLD` (0.5–1.0) to make dedup more or less aggressive

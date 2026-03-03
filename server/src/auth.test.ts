@@ -15,7 +15,7 @@ describe("auth", () => {
 		const body = (await res.json()) as { username: string };
 		expect(body.username).toBe("admin");
 		const cookie = res.headers.get("set-cookie") ?? "";
-		expect(cookie).toContain("yams_session=");
+		expect(cookie).toContain("husk_session=");
 	});
 
 	test("login fails with wrong password", async () => {

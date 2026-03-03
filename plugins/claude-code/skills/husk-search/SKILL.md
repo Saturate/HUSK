@@ -1,11 +1,11 @@
 ---
-name: yams-search
-description: Search YAMS memories for relevant context
+name: husk-search
+description: Search HUSK memories for relevant context
 user-invocable: true
 argument-hint: [search query]
 ---
 
-Search YAMS for relevant memories using the `search` MCP tool.
+Search HUSK for relevant memories using the `search` MCP tool.
 
 Use `$ARGUMENTS` as the search query. If no arguments provided, ask the user what they want to search for.
 

@@ -17,7 +17,7 @@ describe("keys", () => {
 		});
 		expect(res.status).toBe(201);
 		const body = (await res.json()) as { id: string; key: string; label: string };
-		expect(body.key).toStartWith("yams_");
+		expect(body.key).toStartWith("husk_");
 		expect(body.label).toBe("test-key");
 	});
 

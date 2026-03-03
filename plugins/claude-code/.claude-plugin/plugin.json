@@ -1,12 +1,12 @@
 {
-	"name": "yams",
-	"description": "Your AI Memory System - captures and retrieves context across coding sessions",
+	"name": "husk",
+	"description": "HUSK - captures and retrieves context across coding sessions",
 	"version": "0.1.0",
 	"author": {
 		"name": "Saturate",
-		"url": "https://github.com/Saturate/YAMS"
+		"url": "https://github.com/Saturate/HUSK"
 	},
-	"repository": "https://github.com/Saturate/YAMS",
+	"repository": "https://github.com/Saturate/HUSK",
 	"license": "MIT",
 	"keywords": ["memory", "context", "mcp", "rag"]
 }

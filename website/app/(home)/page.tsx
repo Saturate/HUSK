@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HuskLogo } from "@/components/husk-logo";
 import { NeuronBackground } from "@/components/neuron-bg";
 
 export default function HomePage() {
@@ -7,11 +8,12 @@ export default function HomePage() {
 			<NeuronBackground />
 
 			<div className="pointer-events-none relative z-10 mx-auto max-w-2xl text-center">
+				<HuskLogo className="mx-auto mb-4 size-16" />
 				<h1 className="mb-4 text-5xl font-bold tracking-tight sm:text-6xl">
-					🍠 YAMS
+					HUSK
 				</h1>
 				<p className="mb-2 text-lg text-fd-muted-foreground sm:text-xl">
-					Your AI Memory System
+					Helpful Universal Storage for Knowledge
 				</p>
 				<p className="mx-auto mb-8 max-w-lg text-fd-muted-foreground">
 					Self-hosted memory layer for AI coding assistants. Captures what you
@@ -27,7 +29,7 @@ export default function HomePage() {
 						Get Started
 					</Link>
 					<a
-						href="https://github.com/Saturate/YAMS"
+						href="https://github.com/Saturate/HUSK"
 						target="_blank"
 						rel="noopener noreferrer"
 						className="rounded-lg border border-fd-border px-5 py-2.5 text-sm font-medium transition-colors hover:bg-fd-accent"
@@ -39,7 +41,7 @@ export default function HomePage() {
 				<div className="mt-10">
 					<div className="inline-flex items-center gap-2 rounded-lg border border-fd-border bg-fd-card/50 px-4 py-2.5 font-mono text-sm backdrop-blur-sm">
 						<span className="text-fd-muted-foreground select-none">$</span>
-						<span className="text-fd-muted-foreground/60">npx yams</span>
+						<span className="text-fd-muted-foreground/60">npx husk</span>
 						<span className="ml-2 rounded bg-fd-muted px-1.5 py-0.5 text-xs text-fd-muted-foreground">
 							coming soon
 						</span>

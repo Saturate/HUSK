@@ -15,11 +15,11 @@ import { rateLimiter } from "./rate-limit.js";
 import { sessions } from "./sessions.js";
 import { setup, setupGuard } from "./setup.js";
 
-const log = getLogger(["yams", "server"]);
+const log = getLogger(["husk", "server"]);
 
 const app = new Hono();
 
-app.use("*", honoLogger({ category: ["yams", "http"] }));
+app.use("*", honoLogger({ category: ["husk", "http"] }));
 app.use(
 	"*",
 	secureHeaders({

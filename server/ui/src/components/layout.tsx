@@ -1,8 +1,8 @@
 import { useAuth } from "@/auth-context";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { randomBackronym } from "@/husk";
 import { cn } from "@/lib/utils";
-import { randomBackronym } from "@/yams";
 import { type ReactNode, useMemo } from "react";
 import { Link, useLocation } from "react-router";
 
@@ -59,7 +59,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 			<header className="border-b">
 				<div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
 					<h1 className="text-lg font-semibold" title={acronym}>
-						YAMS
+						HUSK
 					</h1>
 					<nav aria-label="Main navigation" className="flex gap-1">
 						{NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (

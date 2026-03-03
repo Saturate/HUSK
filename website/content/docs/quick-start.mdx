@@ -1,19 +1,19 @@
 ---
 title: Quick Start
-description: Get YAMS running with Docker Compose in under a minute.
+description: Get HUSK running with Docker Compose in under a minute.
 ---
 
 ## Start the stack
 
 ```bash
-git clone https://github.com/Saturate/YAMS.git
-cd YAMS
+git clone https://github.com/Saturate/HUSK.git
+cd HUSK
 docker compose up -d
 ```
 
 This starts three services:
 
-- **YAMS** — the memory server (port 3000)
+- **HUSK** — the memory server (port 3000)
 - **Qdrant** — vector database for semantic search
 - **Ollama** — local embedding model
 
@@ -27,7 +27,7 @@ Open [http://localhost:3000/setup](http://localhost:3000/setup) and create your 
 
 1. Log in at [http://localhost:3000](http://localhost:3000)
 2. Go to **API Keys** → **Create Key**
-3. Copy the key (`yams_...`) — you won't see it again
+3. Copy the key (`husk_...`) — you won't see it again
 
 ## Connect Claude Code
 
@@ -36,11 +36,11 @@ Add a `.mcp.json` to your project root (or `~/.claude/.mcp.json` for global acce
 ```json
 {
   "mcpServers": {
-    "yams": {
+    "husk": {
       "type": "http",
       "url": "http://localhost:3000/mcp",
       "headers": {
-        "Authorization": "Bearer yams_your-api-key-here"
+        "Authorization": "Bearer husk_your-api-key-here"
       }
     }
   }

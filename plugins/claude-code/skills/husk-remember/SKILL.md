@@ -1,11 +1,11 @@
 ---
-name: yams-remember
-description: Save a memory to YAMS with a specific scope
+name: husk-remember
+description: Save a memory to HUSK with a specific scope
 user-invocable: true
 argument-hint: [what to remember]
 ---
 
-Store a memory in YAMS using the `remember` MCP tool.
+Store a memory in HUSK using the `remember` MCP tool.
 
 Use `$ARGUMENTS` as the content to remember. If no arguments provided, ask the user what they want to remember.
 

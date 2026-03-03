@@ -1,10 +1,10 @@
 {
 	"mcpServers": {
-		"yams": {
+		"husk": {
 			"type": "http",
-			"url": "${YAMS_URL}/mcp",
+			"url": "${HUSK_URL}/mcp",
 			"headers": {
-				"Authorization": "Bearer ${YAMS_KEY}"
+				"Authorization": "Bearer ${HUSK_KEY}"
 			}
 		}
 	}

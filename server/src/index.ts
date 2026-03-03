@@ -11,8 +11,8 @@ await initLogging();
 
 initDb();
 
-const log = getLogger(["yams", "server"]);
-const port = Number(process.env.YAMS_PORT) || 3000;
+const log = getLogger(["husk", "server"]);
+const port = Number(process.env.HUSK_PORT) || 3000;
 const userCount = getUserCount();
 
 log.info("Starting on port {port}", { port });

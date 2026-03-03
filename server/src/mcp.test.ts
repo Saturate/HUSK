@@ -21,7 +21,7 @@ const mockProvider: EmbeddingProvider = {
 };
 
 const mockQdrantClient = {
-	getCollections: () => Promise.resolve({ collections: [{ name: "yams_memories" }] }),
+	getCollections: () => Promise.resolve({ collections: [{ name: "husk_memories" }] }),
 	upsert: mockUpsert,
 	search: mockSearch,
 	delete: mockDelete,
@@ -161,7 +161,7 @@ describe("MCP server", () => {
 		const apiKey = await createApiKey(app);
 
 		const data = await mcpInitialize(app, apiKey);
-		expect(data.result?.serverInfo?.name).toBe("yams");
+		expect(data.result?.serverInfo?.name).toBe("husk");
 		expect(data.result?.protocolVersion).toBeDefined();
 	});
 
@@ -214,7 +214,7 @@ describe("MCP server", () => {
 
 		expect(mockSearch).toHaveBeenCalledTimes(1);
 		const searchCall = mockSearch.mock.calls[0] as unknown[];
-		expect(searchCall[0]).toBe("yams_memories");
+		expect(searchCall[0]).toBe("husk_memories");
 		const searchParams = searchCall[1] as Record<string, unknown>;
 		const filter = searchParams.filter as {
 			must: Array<{ key: string; match: { value: string } }>;
@@ -406,7 +406,7 @@ describe("MCP server", () => {
 			]),
 		);
 		setQdrantClient({
-			getCollections: () => Promise.resolve({ collections: [{ name: "yams_memories" }] }),
+			getCollections: () => Promise.resolve({ collections: [{ name: "husk_memories" }] }),
 			upsert: mockUpsert,
 			search: multiResultSearch,
 		} as unknown as import("@qdrant/js-client-rest").QdrantClient);
@@ -434,7 +434,7 @@ describe("MCP server", () => {
 			]),
 		);
 		setQdrantClient({
-			getCollections: () => Promise.resolve({ collections: [{ name: "yams_memories" }] }),
+			getCollections: () => Promise.resolve({ collections: [{ name: "husk_memories" }] }),
 			upsert: mockUpsert,
 			search: bigResultSearch,
 		} as unknown as import("@qdrant/js-client-rest").QdrantClient);

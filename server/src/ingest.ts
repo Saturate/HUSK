@@ -15,7 +15,7 @@ function isValidScope(scope: string): scope is Scope {
 const DEFAULT_DEDUP_THRESHOLD = 0.92;
 
 function getDedupThreshold(): number {
-	const str = getConfigWithEnv("dedup_threshold", "YAMS_DEDUP_THRESHOLD");
+	const str = getConfigWithEnv("dedup_threshold", "HUSK_DEDUP_THRESHOLD");
 	if (!str) return DEFAULT_DEDUP_THRESHOLD;
 	const num = Number(str);
 	if (!Number.isFinite(num)) return DEFAULT_DEDUP_THRESHOLD;
@@ -30,7 +30,7 @@ const TTL_DEFAULTS: Record<string, string | undefined> = {
 
 function getScopeTtl(scope: string): number | null {
 	const key = `ttl_default_${scope}` as const;
-	const envVar = `YAMS_TTL_DEFAULT_${scope.toUpperCase()}`;
+	const envVar = `HUSK_TTL_DEFAULT_${scope.toUpperCase()}`;
 	const str = getConfigWithEnv(key, envVar) ?? TTL_DEFAULTS[scope];
 	if (!str) return null;
 	const num = Number(str);
@@ -38,7 +38,7 @@ function getScopeTtl(scope: string): number | null {
 }
 
 function getTtlMax(): number | null {
-	const str = getConfigWithEnv("ttl_max", "YAMS_TTL_MAX");
+	const str = getConfigWithEnv("ttl_max", "HUSK_TTL_MAX");
 	if (!str) return null;
 	const num = Number(str);
 	return Number.isFinite(num) && num > 0 ? num : null;

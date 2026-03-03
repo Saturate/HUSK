@@ -4,7 +4,7 @@ import { AuthLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { randomBackronym } from "@/yams";
+import { randomBackronym } from "@/husk";
 import { useQuery } from "@tanstack/react-query";
 import { type FormEvent, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
@@ -58,7 +58,7 @@ export function LoginPage() {
 	}
 
 	return (
-		<AuthLayout title="YAMS" description={acronym}>
+		<AuthLayout title="HUSK" description={acronym}>
 			{showSetupSuccess && (
 				<div className="mb-4 rounded-md border border-green-800 bg-green-950 px-3 py-2 text-sm text-green-400">
 					Admin account created. Sign in to continue.
