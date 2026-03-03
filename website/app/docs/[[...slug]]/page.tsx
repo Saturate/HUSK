@@ -8,6 +8,16 @@ import {
 import { notFound } from "next/navigation";
 import { source } from "@/lib/source";
 
+// fumadocs-mdx v11 loses body/toc/full types when files pass through loader,
+// but the runtime data is correct
+interface MdxPageData {
+	title: string;
+	description?: string;
+	body: React.FC<{ components: Record<string, React.ComponentType<never>> }>;
+	toc: Array<{ title: string; url: string; depth: number }>;
+	full?: boolean;
+}
+
 export default async function Page(props: {
 	params: Promise<{ slug?: string[] }>;
 }) {
@@ -15,12 +25,13 @@ export default async function Page(props: {
 	const page = source.getPage(params.slug);
 	if (!page) notFound();
 
-	const MDX = page.data.body;
+	const data = page.data as unknown as MdxPageData;
+	const MDX = data.body;
 
 	return (
-		<DocsPage toc={page.data.toc} full={page.data.full}>
-			<DocsTitle>{page.data.title}</DocsTitle>
-			<DocsDescription>{page.data.description}</DocsDescription>
+		<DocsPage toc={data.toc} full={data.full}>
+			<DocsTitle>{data.title}</DocsTitle>
+			<DocsDescription>{data.description}</DocsDescription>
 			<DocsBody>
 				<MDX components={{ ...defaultMdxComponents }} />
 			</DocsBody>
