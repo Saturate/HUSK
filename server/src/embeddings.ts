@@ -1,5 +1,7 @@
 import { getLogger } from "@logtape/logtape";
+import { OpenAICompatibleProvider } from "./embeddings-openai.js";
 import { TransformersProvider } from "./embeddings-transformers.js";
+import { VoyageProvider } from "./embeddings-voyage.js";
 
 const log = getLogger(["husk", "embeddings"]);
 
@@ -62,6 +64,19 @@ export function getProvider(): EmbeddingProvider {
 		switch (backend) {
 			case "transformers":
 				provider = new TransformersProvider();
+				break;
+			case "voyage":
+				provider = new VoyageProvider();
+				break;
+			case "openai":
+				provider = new OpenAICompatibleProvider();
+				break;
+			case "llamacpp":
+				provider = new OpenAICompatibleProvider({
+					name: "llamacpp",
+					defaultBaseUrl: "http://localhost:8080/v1",
+					defaultModel: "default",
+				});
 				break;
 			default:
 				provider = new OllamaProvider();
