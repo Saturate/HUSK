@@ -75,17 +75,19 @@ Projects are keyed by **git remote URL** - works across machines regardless of w
 
 ## Configuration
 
-Copy `.env.example` to `.env` and adjust as needed. All variables have sensible defaults.
+Configure via environment variables, a `husk.toml` file, or both. Env vars always take priority over TOML. See `.env.example` and `server/husk.toml.example` for all options.
 
-| Variable               | Default                  | Description                          |
-| ---------------------- | ------------------------ | ------------------------------------ |
-| `HUSK_PORT`            | `3000`                   | Server port                          |
-| `HUSK_DB_PATH`         | `data/husk.db`           | SQLite database path                 |
-| `HUSK_JWT_SECRET`      | auto-generated           | JWT signing secret                   |
-| `QDRANT_URL`           | `http://localhost:6333`  | Qdrant server URL                    |
-| `OLLAMA_URL`           | `http://localhost:11434` | Ollama server URL                    |
-| `OLLAMA_MODEL`         | `nomic-embed-text`       | Embedding model                      |
-| `EMBEDDING_DIMENSIONS` | `768`                    | Vector dimensions (must match model) |
+| Variable             | Default                  | Description                          |
+| -------------------- | ------------------------ | ------------------------------------ |
+| `HUSK_PORT`          | `3000`                   | Server port                          |
+| `HUSK_DB_PATH`       | `data/husk.db`           | SQLite database path                 |
+| `HUSK_JWT_SECRET`    | auto-generated           | JWT signing secret                   |
+| `HUSK_STORAGE`       | `qdrant`                 | Storage backend (`qdrant`, `sqlite-vec`) |
+| `HUSK_STORAGE_URL`   | `http://localhost:6333`  | Qdrant server URL                    |
+| `HUSK_EMBEDDINGS`    | `ollama`                 | Embedding backend (`ollama`, `transformers`, `voyage`, `openai`, `llamacpp`) |
+| `HUSK_EMBED_URL`     | per-provider default     | Embedding provider endpoint          |
+| `HUSK_EMBED_MODEL`   | per-provider default     | Embedding model name                 |
+| `HUSK_EMBED_API_KEY` | —                        | API key (required for voyage, openai) |
 
 ## Deployment
 
@@ -105,8 +107,8 @@ services:
       - NODE_ENV=production
       - HUSK_DB_PATH=/data/husk.db
       - HUSK_JWT_SECRET=change-me-to-a-random-string
-      - QDRANT_URL=http://qdrant:6333
-      - OLLAMA_URL=http://ollama:11434
+      - HUSK_STORAGE_URL=http://qdrant:6333
+      - HUSK_EMBED_URL=http://ollama:11434
     depends_on:
       qdrant:
         condition: service_started
