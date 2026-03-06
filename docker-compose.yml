@@ -13,10 +13,12 @@ services:
       - HUSK_DB_PATH=/data/husk.db
       - HUSK_PORT=3000
       - HUSK_JWT_SECRET=${HUSK_JWT_SECRET:-}
-      - QDRANT_URL=http://qdrant:6333
-      - OLLAMA_URL=http://ollama:11434
-      - OLLAMA_MODEL=${OLLAMA_MODEL:-nomic-embed-text}
-      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS:-768}
+      - HUSK_STORAGE=qdrant
+      - HUSK_STORAGE_URL=http://qdrant:6333
+      - HUSK_EMBEDDINGS=ollama
+      - HUSK_EMBED_URL=http://ollama:11434
+      - HUSK_EMBED_MODEL=${HUSK_EMBED_MODEL:-nomic-embed-text}
+      - HUSK_EMBED_DIMENSIONS=${HUSK_EMBED_DIMENSIONS:-768}
     depends_on:
       qdrant:
         condition: service_started
@@ -53,7 +55,7 @@ services:
       ollama:
         condition: service_healthy
     restart: "no"
-    entrypoint: ["sh", "-c", "curl -fSL http://ollama:11434/api/pull -d '{\"name\":\"${OLLAMA_MODEL:-nomic-embed-text}\",\"stream\":false}'"]
+    entrypoint: ["sh", "-c", "curl -fSL http://ollama:11434/api/pull -d '{\"name\":\"${HUSK_EMBED_MODEL:-nomic-embed-text}\",\"stream\":false}'"]
 
 volumes:
   husk_data:

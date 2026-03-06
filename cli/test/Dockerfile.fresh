@@ -1,0 +1,55 @@
+# Simulates a fresh machine with only Node and the husk CLI.
+# No Bun, no config, no data, no server — true clean slate.
+# The CLI will: install Bun, download server from GitHub, configure, start.
+#
+# Build:  docker build -f cli/test/Dockerfile.fresh -t husk-fresh .
+# Run:    docker run -it --rm -p 3000:3000 husk-fresh
+#
+# Then inside the container, run:
+#   husk            # zero-config start (installs Bun, downloads server, etc.)
+#   husk init       # interactive wizard
+#   husk status     # check status
+#   husk stop       # stop server
+#   husk logs       # tail logs
+
+# ── Stage 1: Build the CLI ──────────────────────────────────
+FROM oven/bun:1-debian AS build-cli
+
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY server/package.json server/package.json
+COPY cli/package.json cli/package.json
+COPY plugins/claude-code/package.json plugins/claude-code/package.json
+RUN mkdir -p website && echo '{"name":"@husk/website","private":true}' > website/package.json
+RUN bun install --no-save
+
+COPY cli/ cli/
+RUN cd cli && npx tsup
+
+# ── Stage 2: Fresh machine (nothing pre-staged) ─────────────
+FROM debian:bookworm-slim
+
+# Only Node + basic tools (curl for Bun install + tarball download, procps for ps)
+RUN apt-get update && \
+    apt-get install -y curl unzip procps && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install the husk CLI globally (simulates `npm i -g husk` / `npx husk`)
+COPY --from=build-cli /app/cli/dist/bin.js /usr/local/lib/husk/bin.js
+RUN echo '#!/usr/bin/env node' > /usr/local/bin/husk && \
+    echo 'import "/usr/local/lib/husk/bin.js";' >> /usr/local/bin/husk && \
+    chmod +x /usr/local/bin/husk
+
+WORKDIR /root
+
+EXPOSE 3000
+
+CMD ["/bin/bash", "-c", "echo '' && echo '  Fresh machine — nothing installed except Node + husk CLI.' && echo '  Run: husk' && echo '' && exec bash"]

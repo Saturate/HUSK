@@ -1,0 +1,29 @@
+{
+	"name": "@huskai/cli",
+	"version": "0.1.0",
+	"description": "CLI wizard for HUSK — memory layer for AI coding assistants",
+	"type": "module",
+	"bin": {
+		"husk": "./dist/bin.js"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch"
+	},
+	"dependencies": {
+		"@clack/prompts": "^0.10",
+		"smol-toml": "^1.6.0"
+	},
+	"devDependencies": {
+		"@types/node": "^22",
+		"tsup": "^8",
+		"typescript": "^5.9"
+	},
+	"files": [
+		"dist"
+	],
+	"license": "MIT"
+}

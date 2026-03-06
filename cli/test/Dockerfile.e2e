@@ -1,0 +1,56 @@
+# E2E test for husk CLI
+# Tests the full flow: build CLI → start server → setup admin → health check → stop
+#
+# Build context must be the repo root:
+#   docker build -f cli/test/Dockerfile.e2e -t husk-cli-e2e .
+
+FROM oven/bun:1-debian AS base
+
+# Node is needed for the CLI (it's a Node package)
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# ── Install workspace deps ───────────────────────────────────
+# website/ is in .dockerignore, so create a stub for bun workspace resolution
+COPY package.json bun.lock ./
+COPY server/package.json server/package.json
+COPY cli/package.json cli/package.json
+COPY plugins/claude-code/package.json plugins/claude-code/package.json
+RUN mkdir -p website && echo '{"name":"@husk/website","private":true}' > website/package.json
+RUN bun install --no-save
+
+# Server UI deps + build
+COPY server/ui/package.json server/ui/bun.lock server/ui/
+RUN cd server/ui && bun install --frozen-lockfile
+COPY server/ server/
+RUN cd server && bun run build:ui
+
+# ── Build CLI ────────────────────────────────────────────────
+COPY cli/ cli/
+RUN cd cli && npx tsup
+
+# ── Pre-stage server where CLI expects it (~/.husk/server/) ──
+# The CLI normally downloads a release tarball here.
+# We simulate that by copying the repo contents.
+RUN mkdir -p /root/.husk/server && \
+    cp -r /app/server /root/.husk/server/server && \
+    cp /app/package.json /root/.husk/server/package.json && \
+    cp /app/bun.lock /root/.husk/server/bun.lock && \
+    mkdir -p /root/.husk/server/node_modules && \
+    cp -r /app/node_modules /root/.husk/server/node_modules && \
+    echo '{"version":"e2e-test","downloadedAt":"2026-01-01T00:00:00Z"}' > /root/.husk/version.json
+
+# Pre-install server deps in the staged location
+RUN cd /root/.husk/server/server && bun install --frozen-lockfile
+
+# ── Copy test script ────────────────────────────────────────
+COPY cli/test/e2e.sh /app/cli/test/e2e.sh
+RUN chmod +x /app/cli/test/e2e.sh
+
+WORKDIR /app/cli
+
+CMD ["/app/cli/test/e2e.sh"]
