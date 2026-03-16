@@ -6,7 +6,7 @@ import {
 	mock,
 	test,
 } from "bun:test";
-import { mkdtempSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -30,29 +30,26 @@ mock.module("./ui.js", () => ({
 	withSpinner: async (_msg: string, fn: () => Promise<unknown>) => fn(),
 }));
 
-// Mock paths so tests don't touch real ~/.husk/
-let tempDir: string;
+// Redirect paths to temp dir so tests don't touch real ~/.husk/
+const tempDir = mkdtempSync(join(tmpdir(), "husk-cred-test-"));
 
-mock.module("./paths.js", () => {
-	tempDir = mkdtempSync(join(tmpdir(), "husk-cred-paths-"));
-	return {
-		paths: {
-			home: tempDir,
-			server: join(tempDir, "server"),
-			data: join(tempDir, "data"),
-			credentials: join(tempDir, "credentials.json"),
-			config: join(tempDir, "husk.toml"),
-			log: join(tempDir, "husk.log"),
-			pid: join(tempDir, "husk.pid"),
-			version: join(tempDir, "version.json"),
-			modelsPath: join(tempDir, "data", "models"),
-			dbPath: join(tempDir, "data", "husk.db"),
-			vectorsPath: join(tempDir, "data", "husk-vectors.db"),
-			launchdPlist: join(tempDir, "io.husk.server.plist"),
-			systemdUnit: join(tempDir, "husk.service"),
-		},
-	};
-});
+mock.module("./paths.js", () => ({
+	paths: {
+		home: tempDir,
+		server: join(tempDir, "server"),
+		data: join(tempDir, "data"),
+		config: join(tempDir, "husk.toml"),
+		credentials: join(tempDir, "credentials.json"),
+		log: join(tempDir, "husk.log"),
+		pid: join(tempDir, "husk.pid"),
+		version: join(tempDir, "version.json"),
+		modelsPath: join(tempDir, "data", "models"),
+		dbPath: join(tempDir, "data", "husk.db"),
+		vectorsPath: join(tempDir, "data", "husk-vectors.db"),
+		launchdPlist: join(tempDir, "io.husk.server.plist"),
+		systemdUnit: join(tempDir, "husk.service"),
+	},
+}));
 
 const { isFirstRun, setupAdmin, readCredentials } = await import(
 	"./credentials.js"
@@ -123,10 +120,16 @@ describe("readCredentials", () => {
 		expect(readCredentials()).toBeNull();
 	});
 
+	test("returns null for JSON that fails schema validation", () => {
+		writeFileSync(
+			join(tempDir, "credentials.json"),
+			JSON.stringify({ url: 123, apiKey: null }),
+		);
+		expect(readCredentials()).toBeNull();
+	});
+
 	afterEach(() => {
-		// Clean up credentials file between tests
 		try {
-			const { unlinkSync } = require("node:fs");
 			unlinkSync(join(tempDir, "credentials.json"));
 		} catch {}
 	});
@@ -142,7 +145,6 @@ describe("setupAdmin", () => {
 	afterEach(() => {
 		globalThis.fetch = originalFetch;
 		try {
-			const { unlinkSync } = require("node:fs");
 			unlinkSync(join(tempDir, "credentials.json"));
 		} catch {}
 	});

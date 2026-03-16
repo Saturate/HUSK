@@ -2,18 +2,22 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { randomBytes } from "node:crypto";
 import * as p from "@clack/prompts";
+import { z } from "zod";
 import { paths } from "./paths.js";
 import { withSpinner } from "./ui.js";
 
-export interface Credentials {
-	url: string;
-	apiKey: string;
-	username: string;
-}
+const CredentialsSchema = z.object({
+	url: z.string(),
+	apiKey: z.string(),
+	username: z.string(),
+});
+
+export type Credentials = z.infer<typeof CredentialsSchema>;
 
 export function readCredentials(): Credentials | null {
 	try {
-		return JSON.parse(readFileSync(paths.credentials, "utf-8"));
+		const data = JSON.parse(readFileSync(paths.credentials, "utf-8"));
+		return CredentialsSchema.parse(data);
 	} catch {
 		return null;
 	}
@@ -86,7 +90,9 @@ export async function setupAdmin(
 			throw new Error("Failed to create API key");
 		}
 
-		const keyData = (await keyRes.json()) as { key: string };
+		const keyData = z
+			.object({ key: z.string() })
+			.parse(await keyRes.json());
 
 		const creds: Credentials = {
 			url: baseUrl,

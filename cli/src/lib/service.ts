@@ -87,21 +87,42 @@ export function installService(bunPath: string, configPath: string): boolean {
 	}
 }
 
-function installLaunchd(bunPath: string, configPath: string): boolean {
-	// Unload existing if present
-	if (existsSync(paths.launchdPlist)) {
+function launchctlBootout(plistPath: string): void {
+	try {
+		const uid = execSync("id -u", { encoding: "utf-8" }).trim();
+		execSync(`launchctl bootout gui/${uid} "${plistPath}"`, {
+			stdio: "pipe",
+		});
+	} catch {
+		// Fallback for older macOS
 		try {
-			execSync(`launchctl unload "${paths.launchdPlist}"`, {
-				stdio: "pipe",
-			});
+			execSync(`launchctl unload "${plistPath}"`, { stdio: "pipe" });
 		} catch {
 			// Not loaded, fine
 		}
 	}
+}
+
+function launchctlBootstrap(plistPath: string): void {
+	const uid = execSync("id -u", { encoding: "utf-8" }).trim();
+	try {
+		execSync(`launchctl bootstrap gui/${uid} "${plistPath}"`, {
+			stdio: "pipe",
+		});
+	} catch {
+		// Fallback for older macOS
+		execSync(`launchctl load "${plistPath}"`, { stdio: "pipe" });
+	}
+}
+
+function installLaunchd(bunPath: string, configPath: string): boolean {
+	if (existsSync(paths.launchdPlist)) {
+		launchctlBootout(paths.launchdPlist);
+	}
 
 	mkdirSync(dirname(paths.launchdPlist), { recursive: true });
 	writeFileSync(paths.launchdPlist, launchdPlist(bunPath, configPath));
-	execSync(`launchctl load "${paths.launchdPlist}"`, { stdio: "pipe" });
+	launchctlBootstrap(paths.launchdPlist);
 	p.log.success("Installed launchd service (starts on boot)");
 	return true;
 }
@@ -120,9 +141,7 @@ export function uninstallService(): boolean {
 
 	try {
 		if (os === "darwin" && existsSync(paths.launchdPlist)) {
-			execSync(`launchctl unload "${paths.launchdPlist}"`, {
-				stdio: "pipe",
-			});
+			launchctlBootout(paths.launchdPlist);
 			unlinkSync(paths.launchdPlist);
 			return true;
 		}
@@ -143,9 +162,7 @@ export function startService(): boolean {
 	const os = platform();
 	try {
 		if (os === "darwin" && existsSync(paths.launchdPlist)) {
-			execSync(`launchctl load "${paths.launchdPlist}"`, {
-				stdio: "pipe",
-			});
+			launchctlBootstrap(paths.launchdPlist);
 			return true;
 		}
 		if (os === "linux" && existsSync(paths.systemdUnit)) {
@@ -162,9 +179,7 @@ export function stopService(): boolean {
 	const os = platform();
 	try {
 		if (os === "darwin" && existsSync(paths.launchdPlist)) {
-			execSync(`launchctl unload "${paths.launchdPlist}"`, {
-				stdio: "pipe",
-			});
+			launchctlBootout(paths.launchdPlist);
 			return true;
 		}
 		if (os === "linux" && existsSync(paths.systemdUnit)) {

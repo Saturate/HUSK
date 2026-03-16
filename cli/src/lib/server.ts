@@ -7,7 +7,6 @@ import {
 	unlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { pipeline } from "node:stream/promises";
 import { join } from "node:path";
 import * as p from "@clack/prompts";
 import { paths } from "./paths.js";
@@ -68,7 +67,10 @@ export async function downloadServer(ref = "main"): Promise<void> {
 		while (true) {
 			const { done, value } = await reader.read();
 			if (done) break;
-			fileStream.write(value);
+			const ok = fileStream.write(value);
+			if (!ok) {
+				await new Promise<void>((resolve) => fileStream.once("drain", resolve));
+			}
 			received += value.byteLength;
 
 			if (totalBytes > 0) {
