@@ -8,6 +8,7 @@
 - ~~Semantic deduplication (configurable similarity threshold)~~
 - ~~Observation granularity (individual observation fetch by ID)~~
 - ~~Documentation site (fumadocs)~~
+- ~~Zero-config local mode (`npx husk` with sqlite-vec + local transformers, no Docker/Qdrant/Ollama)~~
 
 ## Retrieval approaches
 
@@ -25,7 +26,7 @@ Implementation: graph-in-SQLite (adjacency tables) rather than Neo4j. Keep the s
 
 ### Full-text search (FTS5)
 
-SQLite FTS5 alongside vector search. Useful when you know the exact term ("that function called parseISO") rather than the concept. Also enables the zero-config embedded mode since FTS5 doesn't need Qdrant.
+SQLite FTS5 alongside vector search. Useful when you know the exact term ("that function called parseISO") rather than the concept.
 
 ### Hybrid retrieval
 
@@ -62,14 +63,6 @@ Generate a CLAUDE.md or MEMORY.md file from HUSK memories for tools that don't s
 ### Timeline browsing
 
 Chronological view of observations around a specific point in time. See what happened before and after, not just the single observation.
-
-### Zero-config embedded mode
-
-Single-user mode where HUSK runs as an MCP server directly inside the client process. SQLite for everything (FTS5 as vector search fallback). No Docker, no Qdrant, no Ollama.
-
-```
-npx husk
-```
 
 ### Pluggable embedding backends
 
