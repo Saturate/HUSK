@@ -576,9 +576,7 @@ function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 						metadata: args.metadata,
 					});
 					return {
-						content: [
-							{ type: "text" as const, text: JSON.stringify(edge, null, 2) },
-						],
+						content: [{ type: "text" as const, text: JSON.stringify(edge, null, 2) }],
 					};
 				} catch (err) {
 					return {
@@ -645,13 +643,7 @@ function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 						.enum(["outgoing", "incoming", "both"])
 						.optional()
 						.describe("Filter by direction (default: both)"),
-					limit: z
-						.number()
-						.int()
-						.min(1)
-						.max(100)
-						.optional()
-						.describe("Max results (default 20)"),
+					limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20)"),
 				},
 			},
 			async (args) => {
@@ -707,13 +699,7 @@ function createMcpServer(apiKey: ValidatedApiKey): McpServer {
 						.max(5)
 						.optional()
 						.describe("Maximum traversal depth (default 3, max 5)"),
-					limit: z
-						.number()
-						.int()
-						.min(1)
-						.max(100)
-						.optional()
-						.describe("Max results (default 20)"),
+					limit: z.number().int().min(1).max(100).optional().describe("Max results (default 20)"),
 				},
 			},
 			async (args) => {
