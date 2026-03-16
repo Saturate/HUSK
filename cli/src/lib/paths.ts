@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-const HUSK_HOME = join(homedir(), ".husk");
+const HUSK_HOME = process.env.HUSK_HOME ?? join(homedir(), ".husk");
 
 export const paths = {
 	home: HUSK_HOME,
