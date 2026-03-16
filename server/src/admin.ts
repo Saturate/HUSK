@@ -182,9 +182,7 @@ admin.get("/sessions/:id", (c) => {
 	const id = c.req.param("id");
 
 	const session =
-		c.get("role") === "admin"
-			? getSession(id)
-			: new UserScope(c.get("userId")).getSession(id);
+		c.get("role") === "admin" ? getSession(id) : new UserScope(c.get("userId")).getSession(id);
 
 	if (!session) {
 		return c.json({ error: "Session not found." }, 404);

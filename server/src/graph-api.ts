@@ -1,8 +1,8 @@
 import { Hono } from "hono";
+import { jwtMiddleware } from "./auth.js";
 import { UserScope } from "./db.js";
 import type { AppEnv } from "./env.js";
 import { getGraphProviderOrNull } from "./graph.js";
-import { jwtMiddleware } from "./auth.js";
 
 export const graphApi = new Hono<AppEnv>();
 
@@ -43,14 +43,17 @@ graphApi.get("/", async (c) => {
 	const memoryIds = new Set(memories.map((m) => m.id));
 
 	// Collect all edges between the user's memories
-	const edgeMap = new Map<string, {
-		id: string;
-		source: string;
-		target: string;
-		edge_type: string;
-		metadata: Record<string, unknown> | null;
-		created_at: string;
-	}>();
+	const edgeMap = new Map<
+		string,
+		{
+			id: string;
+			source: string;
+			target: string;
+			edge_type: string;
+			metadata: Record<string, unknown> | null;
+			created_at: string;
+		}
+	>();
 
 	for (const memory of memories) {
 		const neighbors = await graph.getNeighbors(memory.id, { direction: "outgoing", limit: 100 });
@@ -62,7 +65,8 @@ graphApi.get("/", async (c) => {
 			const edges = await graph.getEdgesBetween(memory.id, n.memory_id);
 			for (const edge of edges) {
 				if (edgeMap.has(edge.id)) continue;
-				if (!memoryIds.has(edge.source_memory_id) || !memoryIds.has(edge.target_memory_id)) continue;
+				if (!memoryIds.has(edge.source_memory_id) || !memoryIds.has(edge.target_memory_id))
+					continue;
 				edgeMap.set(edge.id, {
 					id: edge.id,
 					source: edge.source_memory_id,

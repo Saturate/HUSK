@@ -1,9 +1,9 @@
 import type {
+	EdgeType,
 	GraphEdge,
 	GraphNeighbor,
 	GraphProvider,
 	TraversalResult,
-	EdgeType,
 } from "./graph.js";
 
 export class Neo4jGraphProvider implements GraphProvider {
@@ -33,9 +33,7 @@ export class Neo4jGraphProvider implements GraphProvider {
 		const session = driver.session();
 		try {
 			await session.run("RETURN 1");
-			await session.run(
-				"CREATE CONSTRAINT IF NOT EXISTS FOR (m:Memory) REQUIRE m.id IS UNIQUE",
-			);
+			await session.run("CREATE CONSTRAINT IF NOT EXISTS FOR (m:Memory) REQUIRE m.id IS UNIQUE");
 			await session.run(
 				"CREATE CONSTRAINT IF NOT EXISTS FOR ()-[e:EDGE]-() REQUIRE e.id IS UNIQUE",
 			);

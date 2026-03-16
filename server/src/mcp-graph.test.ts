@@ -2,8 +2,8 @@ import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { getMemory } from "./db.js";
 import type { EmbeddingProvider } from "./embeddings.js";
 import { setProvider } from "./embeddings.js";
-import { setGraphProvider } from "./graph.js";
 import { SqliteGraphProvider } from "./graph-sqlite.js";
+import { setGraphProvider } from "./graph.js";
 import type { StorageProvider, VectorSearchResult } from "./storage.js";
 import { setStorageProvider } from "./storage.js";
 import { createRegularUser, createTestApp, getToken, setupAdmin } from "./test-helpers.js";
@@ -307,9 +307,9 @@ describe("MCP graph tools", () => {
 			summary: string;
 		}>;
 		expect(neighbors).toHaveLength(1);
-		expect(neighbors[0]!.memory_id).toBe(idB);
-		expect(neighbors[0]!.edge_type).toBe("caused_by");
-		expect(neighbors[0]!.summary).toBe("Memory B content");
+		expect(neighbors[0]?.memory_id).toBe(idB);
+		expect(neighbors[0]?.edge_type).toBe("caused_by");
+		expect(neighbors[0]?.summary).toBe("Memory B content");
 	});
 
 	test("related filters by edge type", async () => {
@@ -339,7 +339,7 @@ describe("MCP graph tools", () => {
 
 		const neighbors = parseResult(data) as Array<{ memory_id: string }>;
 		expect(neighbors).toHaveLength(1);
-		expect(neighbors[0]!.memory_id).toBe(idC);
+		expect(neighbors[0]?.memory_id).toBe(idC);
 	});
 
 	test("related hides other user's memories", async () => {
@@ -449,7 +449,7 @@ describe("MCP graph tools", () => {
 
 		const results = parseResult(data) as Array<{ depth: number }>;
 		expect(results).toHaveLength(1);
-		expect(results[0]!.depth).toBe(1);
+		expect(results[0]?.depth).toBe(1);
 	});
 
 	test("traverse filters by edge types", async () => {
@@ -479,7 +479,7 @@ describe("MCP graph tools", () => {
 
 		const results = parseResult(data) as Array<{ memory_id: string }>;
 		expect(results).toHaveLength(1);
-		expect(results[0]!.memory_id).toBe(idC);
+		expect(results[0]?.memory_id).toBe(idC);
 	});
 
 	test("traverse hides other user's memories in results", async () => {

@@ -8,13 +8,13 @@ import { admin } from "./admin.js";
 import { auth, invites, keys, users } from "./auth.js";
 import { getDb } from "./db.js";
 import { graphApi } from "./graph-api.js";
+import { getGraphProviderOrNull } from "./graph.js";
 import { ingest } from "./ingest.js";
 import { mountMcp } from "./mcp.js";
 import { isGitHubOAuthEnabled, oauth } from "./oauth.js";
 import { rateLimiter } from "./rate-limit.js";
 import { sessions } from "./sessions.js";
 import { setup, setupGuard } from "./setup.js";
-import { getGraphProviderOrNull } from "./graph.js";
 import { getStorageProvider } from "./storage.js";
 
 const log = getLogger(["husk", "server"]);

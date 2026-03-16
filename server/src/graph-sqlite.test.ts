@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "bun:test";
 import { createApiKey, createMemory, createUser, deleteMemory, getDb } from "./db.js";
-import { setGraphProvider } from "./graph.js";
 import { SqliteGraphProvider } from "./graph-sqlite.js";
+import { setGraphProvider } from "./graph.js";
 import { createTestApp } from "./test-helpers.js";
 
 let graph: SqliteGraphProvider;
@@ -180,13 +180,13 @@ describe("SqliteGraphProvider", () => {
 
 			const outgoing = await graph.getNeighbors(memA, { direction: "outgoing" });
 			expect(outgoing).toHaveLength(1);
-			expect(outgoing[0]!.memory_id).toBe(memB);
-			expect(outgoing[0]!.direction).toBe("outgoing");
+			expect(outgoing[0]?.memory_id).toBe(memB);
+			expect(outgoing[0]?.direction).toBe("outgoing");
 
 			const incoming = await graph.getNeighbors(memA, { direction: "incoming" });
 			expect(incoming).toHaveLength(1);
-			expect(incoming[0]!.memory_id).toBe(memC);
-			expect(incoming[0]!.direction).toBe("incoming");
+			expect(incoming[0]?.memory_id).toBe(memC);
+			expect(incoming[0]?.direction).toBe("incoming");
 		});
 
 		test("filters by edge type", async () => {
@@ -205,7 +205,7 @@ describe("SqliteGraphProvider", () => {
 
 			const related = await graph.getNeighbors(memA, { edgeType: "related_to" });
 			expect(related).toHaveLength(1);
-			expect(related[0]!.memory_id).toBe(memB);
+			expect(related[0]?.memory_id).toBe(memB);
 		});
 
 		test("respects limit", async () => {
@@ -251,8 +251,8 @@ describe("SqliteGraphProvider", () => {
 			expect(depths).toContain(2);
 
 			const atDepth2 = results.find((r) => r.depth === 2);
-			expect(atDepth2!.memory_id).toBe(memC);
-			expect(atDepth2!.path).toHaveLength(2);
+			expect(atDepth2?.memory_id).toBe(memC);
+			expect(atDepth2?.path).toHaveLength(2);
 		});
 
 		test("respects maxDepth", async () => {
@@ -271,7 +271,7 @@ describe("SqliteGraphProvider", () => {
 
 			const results = await graph.traverse(memA, { maxDepth: 1 });
 			expect(results).toHaveLength(1);
-			expect(results[0]!.memory_id).toBe(memB);
+			expect(results[0]?.memory_id).toBe(memB);
 		});
 
 		test("filters by edge types", async () => {
@@ -290,7 +290,7 @@ describe("SqliteGraphProvider", () => {
 
 			const results = await graph.traverse(memA, { edgeTypes: ["related_to"] });
 			expect(results).toHaveLength(1);
-			expect(results[0]!.memory_id).toBe(memB);
+			expect(results[0]?.memory_id).toBe(memB);
 		});
 
 		test("handles cycles without infinite loop", async () => {
@@ -311,7 +311,7 @@ describe("SqliteGraphProvider", () => {
 			const results = await graph.traverse(memA, { maxDepth: 5 });
 			// Should visit B only once despite cycle
 			expect(results).toHaveLength(1);
-			expect(results[0]!.memory_id).toBe(memB);
+			expect(results[0]?.memory_id).toBe(memB);
 		});
 
 		test("respects limit", async () => {

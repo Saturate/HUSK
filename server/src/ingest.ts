@@ -1,6 +1,12 @@
 import { Hono } from "hono";
 import { bearerKeyMiddleware } from "./auth.js";
-import { createMemory, getConfigWithEnv, getMemory, getMemoryForUser, updateMemorySummary } from "./db.js";
+import {
+	createMemory,
+	getConfigWithEnv,
+	getMemory,
+	getMemoryForUser,
+	updateMemorySummary,
+} from "./db.js";
 import { getProvider } from "./embeddings.js";
 import type { AppEnv } from "./env.js";
 import { getStorageProvider } from "./storage.js";

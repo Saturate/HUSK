@@ -1,10 +1,10 @@
 import { getDb } from "./db.js";
 import type {
+	EdgeType,
 	GraphEdge,
 	GraphNeighbor,
 	GraphProvider,
 	TraversalResult,
-	EdgeType,
 } from "./graph.js";
 
 interface EdgeRow {
@@ -46,7 +46,14 @@ export class SqliteGraphProvider implements GraphProvider {
 		try {
 			db.query(
 				"INSERT INTO graph_edges (id, source_memory_id, target_memory_id, edge_type, metadata, created_by) VALUES (?, ?, ?, ?, ?, ?)",
-			).run(id, params.sourceMemoryId, params.targetMemoryId, params.edgeType, metaJson, params.userId);
+			).run(
+				id,
+				params.sourceMemoryId,
+				params.targetMemoryId,
+				params.edgeType,
+				metaJson,
+				params.userId,
+			);
 		} catch (err) {
 			if (err instanceof Error) {
 				if (err.message.includes("UNIQUE constraint")) {
@@ -61,11 +68,10 @@ export class SqliteGraphProvider implements GraphProvider {
 			throw err;
 		}
 
-		const row = db
-			.query<EdgeRow, [string]>("SELECT * FROM graph_edges WHERE id = ?")
-			.get(id);
+		const row = db.query<EdgeRow, [string]>("SELECT * FROM graph_edges WHERE id = ?").get(id);
 
-		return rowToEdge(row!);
+		if (!row) throw new Error(`Edge ${id} not found`);
+		return rowToEdge(row);
 	}
 
 	async getEdge(edgeId: string): Promise<GraphEdge | null> {
@@ -177,7 +183,9 @@ export class SqliteGraphProvider implements GraphProvider {
 		];
 
 		while (queue.length > 0 && results.length < limit) {
-			const [currentId, depth, path] = queue.shift()!;
+			const item = queue.shift();
+			if (!item) break;
+			const [currentId, depth, path] = item;
 
 			if (depth > 0) {
 				results.push({ memory_id: currentId, depth, path });

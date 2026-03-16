@@ -185,15 +185,9 @@ export function initDb(path?: string): Database {
 			created_by TEXT NOT NULL
 		)
 	`);
-	db.run(
-		"CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_memory_id)",
-	);
-	db.run(
-		"CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_memory_id)",
-	);
-	db.run(
-		"CREATE INDEX IF NOT EXISTS idx_graph_edges_type ON graph_edges(edge_type)",
-	);
+	db.run("CREATE INDEX IF NOT EXISTS idx_graph_edges_source ON graph_edges(source_memory_id)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_graph_edges_target ON graph_edges(target_memory_id)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_graph_edges_type ON graph_edges(edge_type)");
 	db.run(
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_graph_edges_unique ON graph_edges(source_memory_id, target_memory_id, edge_type)",
 	);
