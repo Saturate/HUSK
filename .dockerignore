@@ -9,6 +9,7 @@ server/data/
 .git/
 .claude/
 website/
+!website/package.json
 **/*.test.ts
 server/seed.sh
 PLAN.md
