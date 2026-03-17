@@ -1,0 +1,120 @@
+---
+title: Graph Tools
+description: Tools for linking memories with typed edges and traversing the knowledge graph.
+---
+
+Graph tools let you build a knowledge graph on top of your memories. Connect memories with typed relationships, find neighbors, and walk causal chains.
+
+Graph tools are available when the graph backend is enabled (`sqlite` or `neo4j`). See [Configuration](/docs/configuration#graph) for setup.
+
+## link
+
+Create a typed edge between two memories.
+
+**Cost:** DB write only (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `source_id` | string | Yes | Source memory ID |
+| `target_id` | string | Yes | Target memory ID |
+| `edge_type` | `"caused_by"` \| `"contradicts"` \| `"supersedes"` \| `"related_to"` | Yes | Relationship type |
+| `metadata` | object | No | Optional metadata (max 4KB serialized JSON) |
+
+### Edge types
+
+| Type | Meaning |
+|---|---|
+| `caused_by` | A was caused by B |
+| `contradicts` | A conflicts with B |
+| `supersedes` | A replaces B |
+| `related_to` | General relation |
+
+### Example
+
+```json
+{
+  "source_id": "550e8400-e29b-41d4-a716-446655440000",
+  "target_id": "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+  "edge_type": "caused_by"
+}
+```
+
+---
+
+## unlink
+
+Remove an edge by its ID.
+
+**Cost:** DB write only (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `edge_id` | string | Yes | The edge ID to remove |
+
+### Example
+
+```json
+{
+  "edge_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+---
+
+## related
+
+Find direct neighbors of a memory in the knowledge graph.
+
+**Cost:** DB read only (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `memory_id` | string | Yes | The memory to find neighbors for |
+| `edge_type` | `"caused_by"` \| `"contradicts"` \| `"supersedes"` \| `"related_to"` | No | Filter by edge type |
+| `direction` | `"outgoing"` \| `"incoming"` \| `"both"` | No | Filter by direction. Default: `"both"` |
+| `limit` | integer (1–100) | No | Max results. Default: 20 |
+
+### Example
+
+```json
+{
+  "memory_id": "550e8400-e29b-41d4-a716-446655440000",
+  "edge_type": "caused_by",
+  "direction": "incoming"
+}
+```
+
+---
+
+## traverse
+
+Walk the knowledge graph using breadth-first search. Finds causal chains, contradiction clusters, and related memory groups.
+
+**Cost:** Multiple DB reads (no LLM)
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `memory_id` | string | Yes | Starting memory ID |
+| `edge_types` | array of edge types | No | Only follow these edge types. Default: all |
+| `max_depth` | integer (1–5) | No | How many hops to traverse. Default: 3 |
+| `limit` | integer (1–100) | No | Max results. Default: 20 |
+
+### Example
+
+```json
+{
+  "memory_id": "550e8400-e29b-41d4-a716-446655440000",
+  "edge_types": ["caused_by", "supersedes"],
+  "max_depth": 2
+}
+```
+
+Returns each memory with its depth and the path taken to reach it.

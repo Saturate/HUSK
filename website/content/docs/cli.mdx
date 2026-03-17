@@ -1,0 +1,115 @@
+---
+title: CLI
+description: The husk CLI — interactive setup, server management, and deployment.
+---
+
+The `@huskai/cli` package provides an interactive CLI for installing, configuring, and managing HUSK.
+
+```bash
+npx @huskai/cli
+```
+
+Or install globally:
+
+```bash
+npm i -g @huskai/cli
+husk
+```
+
+## Commands
+
+### `husk` (start)
+
+Start the HUSK server. On first run, offers a setup wizard.
+
+```bash
+npx @huskai/cli                # start as daemon
+npx @huskai/cli --foreground   # run in foreground
+```
+
+First run walks you through storage, embeddings, and admin account setup — then starts the server and optionally installs it as an OS service (systemd/launchd) for auto-start on boot.
+
+---
+
+### `husk init`
+
+Interactive wizard with two modes:
+
+- **Local install** — full setup wizard: pick storage backend (sqlite-vec or Qdrant), embedding provider, compression, admin account, and optional Docker Compose generation for dependencies.
+- **Connect to remote** — point at an existing HUSK server with your API key. Detects and registers MCP clients automatically.
+
+```bash
+npx @huskai/cli init
+```
+
+---
+
+### `husk deploy`
+
+Generate a deployment prompt tailored to your infrastructure. Answer a few questions (domain, provider, reverse proxy, backends) and get a ready-to-paste prompt for Claude, ChatGPT, or any AI assistant to guide server setup.
+
+```bash
+npx @huskai/cli deploy
+```
+
+The prompt is copied to your clipboard automatically.
+
+---
+
+### `husk server-setup`
+
+Set up the first admin account on a freshly deployed remote server. Run this locally after deployment.
+
+```bash
+npx @huskai/cli server-setup
+```
+
+Creates admin user + API key and registers your local MCP clients.
+
+---
+
+### `husk config`
+
+Interactively view and edit `~/.husk/husk.toml`. Walk through storage, embeddings, server, and compression settings.
+
+```bash
+npx @huskai/cli config
+```
+
+See [Configuration](/docs/configuration) for the full config reference.
+
+---
+
+### `husk stop`
+
+Stop the running server daemon.
+
+```bash
+npx @huskai/cli stop
+```
+
+---
+
+### `husk status`
+
+Show server status, port, PID, health check results, and configured backends.
+
+```bash
+npx @huskai/cli status
+```
+
+---
+
+### `husk logs`
+
+Tail the server log file.
+
+```bash
+npx @huskai/cli logs            # last 50 lines
+npx @huskai/cli logs -f         # follow in real-time
+npx @huskai/cli logs -n 100     # last 100 lines
+```
+
+## MCP client detection
+
+The CLI auto-detects Claude Code and Cursor configurations and offers to register HUSK as an MCP server. If your client isn't detected, it shows the manual JSON config to copy.
