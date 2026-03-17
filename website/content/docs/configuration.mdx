@@ -1,43 +1,140 @@
 ---
 title: Configuration
-description: Environment variables, admin config, TTL, dedup, and privacy settings.
+description: husk.toml reference, environment variables, TTL, dedup, and backend options.
 ---
 
-## Environment variables
+HUSK is configured via `husk.toml`, environment variables, or the admin UI. Precedence: **environment variables > husk.toml > defaults**.
 
-Set these in your `.env` file or as environment variables in Docker Compose.
+The config file lives at `~/.husk/husk.toml` (or set `HUSK_CONFIG` to a custom path). Use `husk config` to edit interactively — see [CLI](/docs/cli#husk-config).
 
-| Variable | Default | Description |
-|---|---|---|
-| `HUSK_PORT` | `3000` | Server port |
-| `HUSK_DB_PATH` | `data/husk.db` | SQLite database path |
-| `HUSK_JWT_SECRET` | auto-generated | JWT signing secret for admin sessions |
-| `QDRANT_URL` | `http://localhost:6333` | Qdrant server URL |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `nomic-embed-text` | Embedding model name |
-| `EMBEDDING_DIMENSIONS` | `768` | Vector dimensions (must match your model) |
+## Server
 
-## TTL configuration
+| TOML key | Env var | Default | Description |
+|---|---|---|---|
+| `server.port` | `HUSK_PORT` | `3000` | HTTP server port |
+| `server.db_path` | `HUSK_DB_PATH` | `data/husk.db` | SQLite database path |
+| `server.jwt_secret` | `HUSK_JWT_SECRET` | auto-generated | JWT signing secret |
+
+## Storage
+
+Vector storage backend for memory embeddings.
+
+| TOML key | Env var | Default | Description |
+|---|---|---|---|
+| `storage.backend` | `HUSK_STORAGE` | `qdrant` | `qdrant` or `sqlite-vec` |
+| `storage.url` | `HUSK_STORAGE_URL` | `http://localhost:6333` | Qdrant server URL |
+| `storage.path` | `HUSK_STORAGE_PATH` | `data/husk-vectors.db` | sqlite-vec database path |
+
+**sqlite-vec** is embedded and requires no external service. **Qdrant** is a dedicated vector database — better for larger deployments.
+
+## Embeddings
+
+| TOML key | Env var | Default | Description |
+|---|---|---|---|
+| `embeddings.backend` | `HUSK_EMBEDDINGS` | `ollama` | `ollama`, `transformers`, `openai`, `voyage`, or `llamacpp` |
+| `embeddings.url` | `HUSK_EMBED_URL` | provider-specific | API/server URL |
+| `embeddings.model` | `HUSK_EMBED_MODEL` | provider-specific | Model identifier |
+| `embeddings.api_key` | `HUSK_EMBED_API_KEY` | — | API key (OpenAI, Voyage) |
+| `embeddings.dimensions` | `HUSK_EMBED_DIMENSIONS` | provider-specific | Vector dimensions (must match model) |
+| `embeddings.models_path` | `HUSK_EMBED_MODELS_PATH` | `data/models` | Local model cache (transformers only) |
+
+### Provider defaults
+
+| Provider | URL | Model | Dimensions | API key |
+|---|---|---|---|---|
+| `ollama` | `http://localhost:11434` | `nomic-embed-text` | 768 | No |
+| `transformers` | — | `Xenova/all-MiniLM-L6-v2` | 384 | No |
+| `openai` | `https://api.openai.com/v1` | `text-embedding-3-small` | 1536 | Yes |
+| `voyage` | `https://api.voyageai.com/v1` | `voyage-3.5` | 1024 | Yes |
+| `llamacpp` | `http://localhost:8080/v1` | `default` | provider-determined | No |
+
+## Compression
+
+Session compression summarizes observations into searchable memories.
+
+| TOML key | Env var | Default | Description |
+|---|---|---|---|
+| `compression.provider` | `HUSK_COMPRESSION_PROVIDER` | `anthropic` | `anthropic`, `openrouter`, or `ollama` |
+| `compression.api_key` | `HUSK_COMPRESSION_API_KEY` | — | API key (Anthropic, OpenRouter) |
+| `compression.model` | `HUSK_COMPRESSION_MODEL` | provider-specific | Model for summarization |
+| `compression.url` | `HUSK_COMPRESSION_URL` | provider-specific | Base URL (OpenRouter, Ollama) |
+| `compression.mode` | `HUSK_COMPRESSION_MODE` | `client` | `client` (disabled) or `server` (server-side) |
+| `compression.batch_size` | `HUSK_COMPRESSION_BATCH_SIZE` | `20` | Observations per batch before compressing (5–100) |
+| `compression.interval_minutes` | `HUSK_COMPRESSION_INTERVAL_MINUTES` | `15` | Minutes of inactivity before compressing stale sessions (5–60) |
+
+### Compression providers
+
+| Provider | Default model | URL | API key |
+|---|---|---|---|
+| `anthropic` | `claude-haiku-4-5-20251001` | — | Yes |
+| `openrouter` | `anthropic/claude-haiku-4-5-20251001` | `https://openrouter.ai/api/v1` | Yes |
+| `ollama` | `llama3.2` | `http://localhost:11434` | No |
+
+Compression triggers when `mode = "server"`: batch threshold reached, session ends, or no observations for `interval_minutes`.
+
+## Graph
+
+Knowledge graph for linking memories with typed relationships. See [Graph Tools](/docs/mcp-tools/graph-tools) for the MCP tools.
+
+| TOML key | Env var | Default | Description |
+|---|---|---|---|
+| `graph.backend` | `HUSK_GRAPH` | `sqlite` | `sqlite`, `neo4j`, or `none` |
+| `graph.url` | `HUSK_GRAPH_URL` | `bolt://localhost:7687` | Neo4j connection URL |
+| `graph.user` | `HUSK_GRAPH_USER` | `neo4j` | Neo4j username |
+| `graph.password` | `HUSK_GRAPH_PASSWORD` | — | Neo4j password (required for neo4j) |
+
+**sqlite** is embedded in the main database. **neo4j** requires a running Neo4j instance. **none** disables the graph layer entirely — memory search still works, but relationship tools are unavailable.
+
+## Auth
+
+| TOML key | Env var | Default | Description |
+|---|---|---|---|
+| `auth.github_client_id` | `GITHUB_CLIENT_ID` | — | GitHub OAuth app client ID |
+| `auth.github_client_secret` | `GITHUB_CLIENT_SECRET` | — | GitHub OAuth app client secret |
+| `auth.oauth_allowed_orgs` | `OAUTH_ALLOWED_ORGS` | — | Comma-separated GitHub orgs allowed to log in |
+
+## TTL
 
 Default TTLs per scope, configurable via environment variables or admin config:
 
-| Variable | Config key | Default | Description |
+| Env var | Config key | Default | Description |
 |---|---|---|---|
-| `HUSK_TTL_DEFAULT_SESSION` | `ttl_default_session` | `2592000` (30 days) | Default TTL for session memories |
-| `HUSK_TTL_DEFAULT_PROJECT` | `ttl_default_project` | `7776000` (90 days) | Default TTL for project memories |
-| `HUSK_TTL_DEFAULT_GLOBAL` | `ttl_default_global` | _(none)_ | Default TTL for global memories (forever by default) |
-| `HUSK_TTL_MAX` | `ttl_max` | _(none)_ | Hard ceiling for all TTLs — caps even "forever" memories |
+| `HUSK_TTL_DEFAULT_SESSION` | `ttl_default_session` | `2592000` (30 days) | Session memory TTL |
+| `HUSK_TTL_DEFAULT_PROJECT` | `ttl_default_project` | `7776000` (90 days) | Project memory TTL |
+| `HUSK_TTL_DEFAULT_GLOBAL` | `ttl_default_global` | _(none)_ | Global memory TTL (forever by default) |
+| `HUSK_TTL_MAX` | `ttl_max` | _(none)_ | Hard ceiling for all TTLs |
 
-## Dedup configuration
+## Dedup
 
-| Variable | Config key | Default | Description |
+| Env var | Config key | Default | Description |
 |---|---|---|---|
-| `HUSK_DEDUP_THRESHOLD` | `dedup_threshold` | `0.92` | Similarity threshold for duplicate detection (0.5–1.0) |
+| `HUSK_DEDUP_THRESHOLD` | `dedup_threshold` | `0.92` | Similarity threshold (0.5–1.0) |
 
-Higher values = fewer duplicates detected (more strict). Lower values = more aggressive dedup. The default of 0.92 catches near-identical memories while allowing meaningfully different ones through.
+Higher = stricter (fewer duplicates detected). Lower = more aggressive dedup.
 
 ## Admin config
 
 Some settings can be managed through the admin UI at `/settings`. These are stored in SQLite and take precedence over environment variables when both are set.
 
-Config keys correspond to the environment variable names with the `HUSK_` prefix removed and lowercased (e.g. `HUSK_DEDUP_THRESHOLD` → `dedup_threshold`).
+## Example husk.toml
+
+```toml
+[server]
+port = 3000
+db_path = "data/husk.db"
+
+[storage]
+backend = "sqlite-vec"
+path = "data/husk-vectors.db"
+
+[embeddings]
+backend = "transformers"
+dimensions = 384
+
+[compression]
+provider = "anthropic"
+mode = "server"
+
+[graph]
+backend = "sqlite"
+```

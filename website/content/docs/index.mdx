@@ -7,15 +7,21 @@ HUSK is a self-hosted memory layer for AI coding assistants. It captures what yo
 
 ## Key features
 
-- **Semantic search** — find memories by meaning, not just keywords. Powered by local embeddings (Ollama) and vector search (Qdrant).
+- **Semantic search** — find memories by meaning, not just keywords. Multiple embedding backends: local (Ollama, transformers, llama.cpp) or cloud (OpenAI, Voyage).
+- **Knowledge graph** — link memories with typed edges (`caused_by`, `contradicts`, `supersedes`, `related_to`), traverse causal chains, and find contradiction clusters.
 - **Memory scopes** — session, project, and global memories with automatic TTL. Keep the right context at the right level.
 - **Client-agnostic** — works with any MCP-compatible client. Claude Code plugin included, but the server doesn't care what sends the data.
 - **Duplicate detection** — automatically detects and prevents storing near-identical memories using configurable similarity thresholds.
 - **Session tracking** — records what you work on across sessions, summarises past work, and lets you pick up where you left off.
-- **Self-hosted** — your data stays on your machines. SQLite + Qdrant + Ollama, all running locally via Docker Compose.
+- **Self-hosted** — your data stays on your machines. Run via the CLI or Docker Compose.
 
 ## How to get started
 
-1. [Quick start](/docs/quick-start) — get HUSK running with Docker Compose in under a minute
-2. [Connecting](/docs/connecting) — wire up Claude Code or any MCP client
-3. [MCP Tools](/docs/mcp-tools) — reference for all available tools
+1. [CLI](/docs/cli) — install and configure HUSK with `npx @huskai/cli`
+2. [Quick start](/docs/quick-start) — or get running with Docker Compose in under a minute
+3. [Connecting](/docs/connecting) — wire up Claude Code or any MCP client
+4. [MCP Tools](/docs/mcp-tools) — reference for all available tools
+
+## How does HUSK compare?
+
+See how HUSK stacks up against other AI memory tools at [ai-memory-comparison.vercel.app](https://ai-memory-comparison.vercel.app/).

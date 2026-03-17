@@ -3,8 +3,8 @@
 	"pages": [
 		"index",
 		"quick-start",
+		"cli",
 		"connecting",
-		"comparison",
 		"---Concepts---",
 		"...concepts",
 		"---MCP Tools---",
