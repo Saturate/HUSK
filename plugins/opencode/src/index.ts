@@ -14,7 +14,7 @@ function tryAutoStart() {
 	}
 }
 
-export const plugin: Plugin = async ({ directory }) => {
+export const HuskPlugin: Plugin = async ({ directory }) => {
 	const cwd = directory;
 
 	// Resolve credentials once: env vars > ~/.husk/credentials.json
