@@ -13,18 +13,11 @@ Add `@huskai/opencode` to the `plugin` array in your `opencode.json`:
 
 ```json
 {
-  "mcpServers": {
-    "husk": {
-      "type": "http",
-      "url": "http://localhost:3000/mcp",
-      "headers": {
-        "Authorization": "Bearer husk_your-api-key-here"
-      }
-    }
-  },
   "plugin": ["@huskai/opencode"]
 }
 ```
+
+That's it — the plugin registers the MCP server automatically from your `~/.husk/credentials.json`. No manual `mcpServers` config needed.
 
 OpenCode auto-installs npm plugins via Bun at startup (cached in `~/.cache/opencode/node_modules/`).
 
@@ -95,6 +88,7 @@ The `files_edited` array is unique to this plugin — it lets you (or your AI as
 | Capability | MCP | Plugin |
 |---|---|---|
 | Search & remember | ✅ | ✅ |
+| Auto MCP registration | ❌ | ✅ |
 | Session auto-ingest | ❌ | ✅ |
 | Auto-start server | ❌ | ✅ |
 | File edit tracking | ❌ | ✅ |

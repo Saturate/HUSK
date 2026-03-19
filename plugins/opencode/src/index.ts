@@ -47,6 +47,16 @@ export const plugin: Plugin = async ({ directory }) => {
 	}
 
 	return {
+		config: async (config) => {
+			if (!url || !key) return;
+			config.mcp ??= {};
+			config.mcp.husk ??= {
+				type: "remote",
+				url: `${url}/mcp`,
+				headers: { Authorization: `Bearer ${key}` },
+			};
+		},
+
 		event: async ({ event }) => {
 			if (event.type === "session.created") {
 				const sid = event.properties.info.id;
