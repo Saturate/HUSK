@@ -13,16 +13,15 @@ claude plugin add /path/to/HUSK/plugins/claude-code
 
 Or copy the `plugins/claude-code/` directory into your project manually.
 
-## Environment variables
+## Configuration
 
-The plugin reads these from your shell profile:
+The plugin needs `HUSK_URL` and `HUSK_KEY` environment variables. The easiest way to set them up is with the CLI:
 
-| Variable | Description |
-|---|---|
-| `HUSK_URL` | Server URL (e.g. `http://localhost:3000`) |
-| `HUSK_KEY` | API key (`husk_...`) |
+```bash
+npx @huskai/cli init
+```
 
-Set them in `~/.zshrc`, `~/.bashrc`, or equivalent. The `/husk-init` skill can do this for you.
+This writes credentials to `~/.husk/credentials.json` and sets the env vars in your shell profile. The `/husk-init` skill can also do this interactively from within Claude Code.
 
 ## Hooks
 

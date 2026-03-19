@@ -38,14 +38,19 @@ ln -s /path/to/HUSK/plugins/opencode .opencode/plugins/husk
 
 OpenCode runs plugins via Bun, so TS source works directly — no build step needed.
 
-## Environment variables
+## Configuration
 
-| Variable | Description |
-|---|---|
-| `HUSK_URL` | Server URL (e.g. `http://localhost:3000`) |
-| `HUSK_KEY` | API key (`husk_...`) |
+The plugin reads credentials from `~/.husk/credentials.json` — the same file written by `npx @huskai/cli init`. If you've already run the [CLI setup](/docs/cli), the plugin works out of the box with no extra config.
 
-Set them in your shell profile or let the `shell.env` hook inject them (see below).
+```json
+{
+  "url": "https://husk.example.com",
+  "apiKey": "husk_...",
+  "username": "admin"
+}
+```
+
+Environment variables `HUSK_URL` and `HUSK_KEY` take priority if set, but typically you won't need them.
 
 ## Hooks
 
