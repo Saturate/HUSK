@@ -7,7 +7,9 @@ The OpenCode plugin adds session lifecycle hooks with **file-edit tracking** on 
 
 ## Installation
 
-Add `@huskai/opencode` to your `opencode.json`:
+### From npm
+
+Add `@huskai/opencode` to the `plugin` array in your `opencode.json`:
 
 ```json
 {
@@ -20,13 +22,15 @@ Add `@huskai/opencode` to your `opencode.json`:
       }
     }
   },
-  "plugins": ["@huskai/opencode"]
+  "plugin": ["@huskai/opencode"]
 }
 ```
 
-### Local development
+OpenCode auto-installs npm plugins via Bun at startup (cached in `~/.cache/opencode/node_modules/`).
 
-If you're working on HUSK itself, symlink the plugin instead:
+### From local directory
+
+Files in `.opencode/plugins/` are auto-discovered at startup — no config entry needed. Symlink or copy the plugin:
 
 ```bash
 ln -s /path/to/HUSK/plugins/opencode .opencode/plugins/husk

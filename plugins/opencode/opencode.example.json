@@ -1,5 +1,5 @@
 {
-	"$schema": "https://opencode.ai/config.schema.json",
+	"$schema": "https://opencode.ai/config.json",
 	"mcpServers": {
 		"husk": {
 			"type": "http",
@@ -8,5 +8,6 @@
 				"Authorization": "Bearer husk_your-api-key-here"
 			}
 		}
-	}
+	},
+	"plugin": ["@huskai/opencode"]
 }
