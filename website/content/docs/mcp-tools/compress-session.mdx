@@ -1,0 +1,47 @@
+---
+title: Compress Session
+description: The client-side observation compression prompt.
+---
+
+`compress_session` is an MCP **prompt** (not a tool) that guides your AI assistant through summarizing accumulated observations for a session. This is how [client-mode compression](/docs/configuration#compression-modes) works — the client's own LLM does the summarization instead of the server.
+
+## What it does
+
+When invoked, it asks the AI to:
+
+1. **Read** uncompressed observations via [`get_uncompressed_observations`](/docs/mcp-tools/session-tools#get_uncompressed_observations)
+2. **Summarize** them in a structured format:
+   - **Request** — what the user asked to accomplish
+   - **Completed** — what was actually done (specific files, functions, patterns)
+   - **Learned** — key decisions, constraints, or patterns discovered
+   - **Next Steps** — unfinished work or open questions
+3. **Store** the summary via [`compress_observations`](/docs/mcp-tools/session-tools#compress_observations), which marks those observations as compressed and saves the summary as a searchable memory
+
+## Parameters
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `session_id` | string | Yes | The session ID to compress observations for |
+
+## When it triggers
+
+You don't normally invoke this manually. Both plugins handle it automatically:
+
+- **Claude Code** — the `observation.sh` hook returns `additionalContext` when `uncompressed_count` reaches the batch threshold (default 20), which tells the LLM to run this prompt
+- **OpenCode** — the `experimental.chat.system.transform` hook injects a system prompt when the threshold is hit
+
+## Manual usage
+
+If you want to trigger it yourself:
+
+```
+Use the compress_session prompt for session <session_id>
+```
+
+You can find your session ID via [`session_context`](/docs/mcp-tools/session-tools#session_context).
+
+## Why client-side?
+
+Server-side compression requires the server to have an LLM (Anthropic API key or Ollama). Client-side compression uses the LLM that's already running in your editor — already paid for, already available. The server stays dumb storage.
+
+See [Compression modes](/docs/configuration#compression-modes) for the full comparison.

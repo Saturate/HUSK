@@ -15,6 +15,17 @@ The config file lives at `~/.husk/husk.toml` (or set `HUSK_CONFIG` to a custom p
 | `server.db_path` | `HUSK_DB_PATH` | `data/husk.db` | SQLite database path |
 | `server.jwt_secret` | `HUSK_JWT_SECRET` | auto-generated | JWT signing secret |
 
+## Memory
+
+| Config key | Env var | Default | Description |
+|---|---|---|---|
+| `memory_mode` | `HUSK_MEMORY_MODE` | `simple` | `simple` or `full` — controls observation capture |
+| `session_context_count` | — | `5` | Number of recent session summaries injected on session start (1–20) |
+
+**`simple`** mode disables observation capture entirely — session hooks return empty responses. Use this if you only want manual `remember` / `search` without automatic session tracking.
+
+**`full`** mode enables observation capture, session tracking, and compression. This is what you want for the full HUSK experience.
+
 ## Storage
 
 Vector storage backend for memory embeddings.

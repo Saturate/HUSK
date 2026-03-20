@@ -17,6 +17,8 @@ HUSK exposes the following tools via the MCP endpoint. Each tool has a cost anno
 | [`session_context`](/docs/mcp-tools/session-tools#session_context) | Compact index of recent sessions | DB read only |
 | [`get_session_detail`](/docs/mcp-tools/session-tools#get_session_detail) | Full session details with observations | DB read only |
 | [`get_observation`](/docs/mcp-tools/session-tools#get_observation) | Single observation with full content | DB read only |
+| [`get_uncompressed_observations`](/docs/mcp-tools/session-tools#get_uncompressed_observations) | Uncompressed observations for client-side compression | DB read only |
+| [`compress_observations`](/docs/mcp-tools/session-tools#compress_observations) | Mark observations compressed + store summary | Embedding + DB write |
 | [`link`](/docs/mcp-tools/graph-tools#link) | Create a typed edge between two memories | DB write only |
 | [`unlink`](/docs/mcp-tools/graph-tools#unlink) | Remove an edge by ID | DB write only |
 | [`related`](/docs/mcp-tools/graph-tools#related) | Find direct neighbors of a memory | DB read only |
@@ -27,5 +29,6 @@ HUSK exposes the following tools via the MCP endpoint. Each tool has a cost anno
 | Prompt | Description |
 |---|---|
 | [`meditate`](/docs/mcp-tools/meditate) | Guided memory cleanup — finds duplicates, contradictions, stale entries |
+| [`compress_session`](/docs/mcp-tools/compress-session) | Client-side observation compression — summarize and store |
 
 All "DB read only" tools are cheap and fast. Tools that involve embedding calls go through Ollama, which adds latency depending on your hardware.

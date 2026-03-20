@@ -1,4 +1,4 @@
 {
 	"title": "MCP Tools",
-	"pages": ["index", "memory-tools", "session-tools", "graph-tools", "meditate"]
+	"pages": ["index", "memory-tools", "session-tools", "graph-tools", "meditate", "compress-session"]
 }
