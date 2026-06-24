@@ -243,6 +243,15 @@ queryApi.get("/stats/tools", async (c) => {
 	return c.json(await provider.toolUsageStats({ from: from ?? undefined, to: to ?? undefined }));
 });
 
+queryApi.get("/stats/models/detail", async (c) => {
+	const provider = getTelemetryProviderOrNull();
+	if (!provider) return c.json({ error: "Telemetry not configured" }, 503);
+
+	const from = c.req.query("from");
+	const to = c.req.query("to");
+	return c.json(await provider.modelDetails({ from: from ?? undefined, to: to ?? undefined }));
+});
+
 queryApi.get("/stats/daily", async (c) => {
 	const provider = getTelemetryProviderOrNull();
 	if (!provider) return c.json({ error: "Telemetry not configured" }, 503);

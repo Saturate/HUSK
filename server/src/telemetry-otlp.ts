@@ -190,6 +190,10 @@ export class OtlpTelemetryProvider implements TelemetryProvider {
 		return this.sqlite.toolUsageStats(opts);
 	}
 
+	modelDetails(opts: DateRangeOpts): Promise<import("./telemetry.js").ModelDetail[]> {
+		return this.sqlite.modelDetails(opts);
+	}
+
 	healthy(): Promise<boolean> {
 		return this.sqlite.healthy();
 	}

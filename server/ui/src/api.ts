@@ -253,6 +253,21 @@ export interface ModelCost {
 	session_count: number;
 }
 
+export interface ModelDetail {
+	model: string;
+	session_count: number;
+	total_turns: number;
+	total_input_tokens: number;
+	total_output_tokens: number;
+	total_cache_read_tokens: number;
+	total_cache_create_tokens: number;
+	total_cost_usd: number;
+	avg_output_per_turn: number;
+	avg_input_per_turn: number;
+	avg_cost_per_turn: number;
+	cache_hit_rate: number;
+}
+
 export interface ToolStat {
 	tool_name: string;
 	call_count: number;
@@ -594,6 +609,14 @@ export const api = {
 		if (to) params.set("to", to);
 		const qs = params.toString();
 		return request<ModelCost[]>(`/telemetry/stats/models${qs ? `?${qs}` : ""}`);
+	},
+
+	getModelDetails(from?: string, to?: string) {
+		const params = new URLSearchParams();
+		if (from) params.set("from", from);
+		if (to) params.set("to", to);
+		const qs = params.toString();
+		return request<ModelDetail[]>(`/telemetry/stats/models/detail${qs ? `?${qs}` : ""}`);
 	},
 
 	getTelemetryTools(from?: string, to?: string) {

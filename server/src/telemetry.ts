@@ -171,6 +171,21 @@ export interface ToolStats {
 	p95_duration_ms: number;
 }
 
+export interface ModelDetail {
+	model: string;
+	session_count: number;
+	total_turns: number;
+	total_input_tokens: number;
+	total_output_tokens: number;
+	total_cache_read_tokens: number;
+	total_cache_create_tokens: number;
+	total_cost_usd: number;
+	avg_output_per_turn: number;
+	avg_input_per_turn: number;
+	avg_cost_per_turn: number;
+	cache_hit_rate: number;
+}
+
 // --- Interface ---
 
 export interface TelemetryProvider {
@@ -193,6 +208,7 @@ export interface TelemetryProvider {
 	costByModel(opts: DateRangeOpts): Promise<ModelCost[]>;
 	costByDay(opts: DateRangeOpts): Promise<DailyCost[]>;
 	toolUsageStats(opts: DateRangeOpts): Promise<ToolStats[]>;
+	modelDetails(opts: DateRangeOpts): Promise<ModelDetail[]>;
 
 	healthy(): Promise<boolean>;
 }

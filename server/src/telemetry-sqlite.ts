@@ -347,6 +347,33 @@ export class SqliteTelemetryProvider implements TelemetryProvider {
 			.all(...params);
 	}
 
+	async modelDetails(opts: DateRangeOpts): Promise<import("./telemetry.js").ModelDetail[]> {
+		const { where, params } = this.buildDateFilter(opts, "started_at");
+		const havingClause = where ? " HAVING SUM(total_turns) > 0" : "HAVING SUM(total_turns) > 0";
+		return getDb()
+			.query<import("./telemetry.js").ModelDetail, (string | number)[]>(
+				`SELECT
+					COALESCE(model, '(unknown)') as model,
+					COUNT(*) as session_count,
+					SUM(total_turns) as total_turns,
+					SUM(total_input_tokens) as total_input_tokens,
+					SUM(total_output_tokens) as total_output_tokens,
+					SUM(total_cache_read_tokens) as total_cache_read_tokens,
+					SUM(total_cache_create_tokens) as total_cache_create_tokens,
+					SUM(total_cost_usd) as total_cost_usd,
+					ROUND(CAST(SUM(total_output_tokens) AS REAL) / SUM(total_turns), 0) as avg_output_per_turn,
+					ROUND(CAST(SUM(total_input_tokens) AS REAL) / SUM(total_turns), 0) as avg_input_per_turn,
+					ROUND(SUM(total_cost_usd) / SUM(total_turns), 4) as avg_cost_per_turn,
+					ROUND(CAST(SUM(total_cache_read_tokens) AS REAL) / NULLIF(SUM(total_cache_read_tokens) + SUM(total_cache_create_tokens) + SUM(total_input_tokens), 0), 4) as cache_hit_rate
+				 FROM traces
+				 ${where}
+				 GROUP BY model
+				 ${havingClause}
+				 ORDER BY total_cost_usd DESC`,
+			)
+			.all(...params);
+	}
+
 	async healthy(): Promise<boolean> {
 		try {
 			getDb().query("SELECT 1 FROM traces LIMIT 1").get();

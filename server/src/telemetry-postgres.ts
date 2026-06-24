@@ -338,6 +338,45 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 		return rows as ToolStats[];
 	}
 
+	async modelDetails(opts: DateRangeOpts): Promise<import("./telemetry.js").ModelDetail[]> {
+		const { where, params } = this.buildDateFilter(opts);
+		const rows = await this.sql.unsafe(
+			`SELECT
+				COALESCE(model, '(unknown)') as model,
+				COUNT(*)::int as session_count,
+				SUM(total_turns)::int as total_turns,
+				SUM(total_input_tokens)::bigint as total_input_tokens,
+				SUM(total_output_tokens)::bigint as total_output_tokens,
+				SUM(total_cache_read_tokens)::bigint as total_cache_read_tokens,
+				SUM(total_cache_create_tokens)::bigint as total_cache_create_tokens,
+				SUM(total_cost_usd) as total_cost_usd,
+				ROUND(SUM(total_output_tokens)::numeric / NULLIF(SUM(total_turns), 0)) as avg_output_per_turn,
+				ROUND(SUM(total_input_tokens)::numeric / NULLIF(SUM(total_turns), 0)) as avg_input_per_turn,
+				ROUND(SUM(total_cost_usd)::numeric / NULLIF(SUM(total_turns), 0), 4) as avg_cost_per_turn,
+				ROUND(SUM(total_cache_read_tokens)::numeric / NULLIF(SUM(total_cache_read_tokens) + SUM(total_cache_create_tokens) + SUM(total_input_tokens), 0), 4) as cache_hit_rate
+			 FROM traces
+			 ${where}
+			 GROUP BY model
+			 HAVING SUM(total_turns) > 0
+			 ORDER BY SUM(total_cost_usd) DESC`,
+			params,
+		);
+		return rows.map((r: Record<string, unknown>) => ({
+			model: String(r.model),
+			session_count: Number(r.session_count),
+			total_turns: Number(r.total_turns),
+			total_input_tokens: Number(r.total_input_tokens),
+			total_output_tokens: Number(r.total_output_tokens),
+			total_cache_read_tokens: Number(r.total_cache_read_tokens),
+			total_cache_create_tokens: Number(r.total_cache_create_tokens),
+			total_cost_usd: Number(r.total_cost_usd),
+			avg_output_per_turn: Number(r.avg_output_per_turn),
+			avg_input_per_turn: Number(r.avg_input_per_turn),
+			avg_cost_per_turn: Number(r.avg_cost_per_turn),
+			cache_hit_rate: Number(r.cache_hit_rate ?? 0),
+		}));
+	}
+
 	async healthy(): Promise<boolean> {
 		try {
 			await this.sql`SELECT 1`;

@@ -5,6 +5,7 @@ import {
 	Activity,
 	Brain,
 	Clock,
+	Cpu,
 	Blocks,
 	FolderOpen,
 	GitGraph,
@@ -56,6 +57,7 @@ export function AppSidebar() {
 					<SidebarItem icon={Blocks} to="/workspaces" label="Workspaces" />
 					<SidebarItem icon={FolderOpen} to="/projects" label="Projects" />
 					<SidebarItem icon={Activity} to="/tracing" label="Session Tracing" />
+					<SidebarItem icon={Cpu} to="/models" label="Models" />
 					<SidebarItem icon={Star} to="/scores" label="Scores" disabled />
 				</SidebarGroup>
 

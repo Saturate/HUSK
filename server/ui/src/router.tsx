@@ -13,6 +13,7 @@ import { SetupPage } from "@/pages/setup";
 import { TimelinePage } from "@/pages/timeline";
 import { TraceDetailPage } from "@/pages/trace-detail";
 import { TracingPage } from "@/pages/tracing";
+import { ModelsPage } from "@/pages/models";
 import { UsersPage } from "@/pages/users";
 import { WorkspacesPage } from "@/pages/workspaces";
 import { ThemeProvider } from "@/theme-context";
@@ -54,6 +55,7 @@ export function App() {
 								<Route path="/tracing" element={<TracingPage />} />
 								<Route path="/tracing/:traceId" element={<TraceDetailPage />} />
 								<Route path="/projects" element={<ProjectsPage />} />
+								<Route path="/models" element={<ModelsPage />} />
 								<Route path="/keys" element={<KeysPage />} />
 								<Route path="/memories" element={<MemoriesPage />} />
 								<Route path="/graph" element={<GraphPage />} />
