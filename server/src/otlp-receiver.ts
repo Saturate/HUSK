@@ -1,4 +1,6 @@
 import { getLogger } from "@logtape/logtape";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Hono } from "hono";
 import { bearerKeyMiddleware } from "./auth.js";
 import { calculateCost } from "./cost.js";
@@ -290,5 +292,25 @@ otlpReceiver.post("/v1/traces", async (c) => {
 		traces: seenTraces.size,
 	});
 
+	return c.json({});
+});
+
+// Accept OTLP logs - Claude Code sends telemetry as logs too
+otlpReceiver.post("/v1/logs", async (c) => {
+	const ct = c.req.header("content-type") ?? "unknown";
+	try {
+		const raw = await c.req.text();
+		const logFile = join(tmpdir(), "husk-otlp-logs-sample.bin");
+		await Bun.write(logFile, raw);
+		log.info("OTLP logs received, content-type={ct}, size={size}, saved to {file}", { ct, size: raw.length, file: logFile });
+	} catch (err) {
+		log.info("OTLP logs received, content-type={ct}, error={error}", { ct, error: err instanceof Error ? err.message : String(err) });
+	}
+	return c.json({});
+});
+
+// Accept OTLP metrics
+otlpReceiver.post("/v1/metrics", async (c) => {
+	log.info("OTLP metrics received");
 	return c.json({});
 });
