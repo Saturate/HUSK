@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getDb } from "./db.js";
+import { scanRecentTraces } from "./secret-scanner.js";
 import { getKnowledgeSpans, compressTrace } from "./span-compression.js";
 import type { SpanRow, TelemetryProvider, TraceRow } from "./telemetry.js";
 
@@ -311,6 +312,23 @@ export function registerTelemetryTools(server: McpServer, telemetry: TelemetryPr
 
 			return {
 				content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+			};
+		},
+	);
+
+	server.registerTool(
+		"scan_secrets",
+		{
+			description:
+				"Scan recent session traces for leaked secrets (API keys, tokens, passwords, connection strings). Uses trufflehog if available (800+ patterns with verification), falls back to builtin regex patterns.",
+			inputSchema: {
+				limit: z.number().int().min(1).max(200).optional().describe("Number of recent traces to scan (default 50)"),
+			},
+		},
+		async (args) => {
+			const results = await scanRecentTraces(args.limit ?? 50);
+			return {
+				content: [{ type: "text" as const, text: JSON.stringify(results, null, 2) }],
 			};
 		},
 	);

@@ -2,6 +2,7 @@ import { getLogger } from "@logtape/logtape";
 import { Hono } from "hono";
 import { bearerKeyMiddleware, jwtMiddleware } from "./auth.js";
 import type { AppEnv } from "./env.js";
+import { scanRecentTraces, scanTrace } from "./secret-scanner.js";
 import { getTelemetryProviderOrNull } from "./telemetry.js";
 import { compressTraceIfReady } from "./trace-compression-listener.js";
 
@@ -288,6 +289,18 @@ queryApi.get("/traces/:traceId", async (c) => {
 
 	const spans = await provider.getSpansForTrace(traceId);
 	return c.json({ trace, spans });
+});
+
+queryApi.get("/secrets/scan", async (c) => {
+	const limit = c.req.query("limit") ? Number(c.req.query("limit")) : 50;
+	const results = await scanRecentTraces(limit);
+	return c.json(results);
+});
+
+queryApi.get("/secrets/scan/:traceId", async (c) => {
+	const traceId = c.req.param("traceId");
+	const findings = await scanTrace(traceId);
+	return c.json({ trace_id: traceId, findings });
 });
 
 // Mount both sub-routers

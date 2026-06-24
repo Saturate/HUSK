@@ -14,6 +14,7 @@ import {
 	LogOut,
 	ServerCog,
 	Settings2,
+	ShieldAlert,
 	Star,
 	Users,
 } from "lucide-react";
@@ -58,6 +59,7 @@ export function AppSidebar() {
 					<SidebarItem icon={FolderOpen} to="/projects" label="Projects" />
 					<SidebarItem icon={Activity} to="/tracing" label="Session Tracing" />
 					<SidebarItem icon={Cpu} to="/models" label="Models" />
+					<SidebarItem icon={ShieldAlert} to="/secrets" label="Secrets" />
 					<SidebarItem icon={Star} to="/scores" label="Scores" disabled />
 				</SidebarGroup>
 
