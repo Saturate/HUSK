@@ -307,6 +307,19 @@ export async function scanRecentTraces(limit = 20): Promise<{
 		traceFindings.set(chunk.traceId, entry);
 	}
 
+	// Deduplicate: same secret_type + redacted_match in same trace = 1 finding
+	for (const [, entry] of traceFindings) {
+		const seen = new Map<string, SecretFinding>();
+		for (const f of entry.findings) {
+			const key = `${f.secret_type}:${f.redacted_match}`;
+			const existing = seen.get(key);
+			if (!existing || f.started_at < existing.started_at) {
+				seen.set(key, f);
+			}
+		}
+		entry.findings = Array.from(seen.values());
+	}
+
 	const results = Array.from(traceFindings.entries()).map(([trace_id, { project, findings }]) => ({
 		trace_id,
 		project,
