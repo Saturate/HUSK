@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table";
 import { formatCost, formatTokens } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 
 const FAMILY_COLORS: Record<string, string> = {
 	"opus-4-8": "bg-red-500",
@@ -83,11 +84,13 @@ function ComparisonChart({
 	families,
 	getValue,
 	formatFn,
+	showVariants,
 }: {
 	title: string;
 	families: ModelFamily[];
 	getValue: (m: ModelDetail) => number;
 	formatFn: (n: number) => string;
+	showVariants: boolean;
 }) {
 	const max = Math.max(...families.map((f) => getValue(f.combined)));
 	if (max === 0) return null;
@@ -124,8 +127,8 @@ function ComparisonChart({
 									</div>
 								</div>
 							</div>
-							{/* Variant sub-bars (only if >1 variant) */}
-							{f.variants.length > 1 && f.variants.map((v) => {
+							{/* Variant sub-bars */}
+							{showVariants && f.variants.length > 1 && f.variants.map((v) => {
 								const vval = getValue(v);
 								const vpct = (vval / max) * 100;
 								const label = v.model.replace("claude-", "");
@@ -162,6 +165,7 @@ export function ModelsPage() {
 		queryFn: () => api.getModelDetails(),
 	});
 
+	const [showVariants, setShowVariants] = useState(false);
 	const allModels = modelsQuery.data ?? [];
 	const meaningful = allModels.filter((m) => m.total_turns >= 100);
 	const families = groupIntoFamilies(meaningful);
@@ -180,27 +184,35 @@ export function ModelsPage() {
 			) : (
 				<>
 					<div className="mb-10 rounded-lg border bg-card p-6">
+						<div className="mb-4 flex items-center justify-end">
+							<button
+								onClick={() => setShowVariants(!showVariants)}
+								className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+							>
+								{showVariants ? "Hide variants" : "Show variants"}
+							</button>
+						</div>
 						<ComparisonChart
 							title="Output tokens per turn"
-							families={families}
+							families={families} showVariants={showVariants}
 							getValue={(m) => m.avg_output_per_turn}
 							formatFn={(n) => formatTokens(n) + " tok"}
 						/>
 						<ComparisonChart
 							title="Cost per turn"
-							families={families}
+							families={families} showVariants={showVariants}
 							getValue={(m) => m.avg_cost_per_turn}
 							formatFn={formatCost}
 						/>
 						<ComparisonChart
 							title="Cache hit rate"
-							families={families}
+							families={families} showVariants={showVariants}
 							getValue={(m) => m.cache_hit_rate * 100}
 							formatFn={(n) => `${n.toFixed(1)}%`}
 						/>
 						<ComparisonChart
 							title="Total cost"
-							families={families}
+							families={families} showVariants={showVariants}
 							getValue={(m) => m.total_cost_usd}
 							formatFn={formatCost}
 						/>
