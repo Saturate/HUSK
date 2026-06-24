@@ -297,55 +297,40 @@ otlpReceiver.post("/v1/traces", async (c) => {
 
 // Accept OTLP logs - Claude Code sends structured log events
 otlpReceiver.post("/v1/logs", async (c) => {
-	const sampleFile = join(tmpdir(), "husk-otlp-logs-sample.json");
+	const provider = getTelemetryProviderOrNull();
 
-	// Try JSON first, then protobuf
+	// Try JSON parse
 	const buf = await c.req.arrayBuffer();
-	let body: Record<string, unknown> | null = null;
-
-	// Try JSON
+	let body: { resourceLogs?: Array<{ scopeLogs?: Array<{ logRecords?: unknown[] }> }> } | null = null;
 	try {
 		body = JSON.parse(new TextDecoder().decode(buf));
 	} catch {
-		// Try protobuf
-		try {
-			const { ExportLogsServiceRequest } = await import("@opentelemetry/otlp-transformer/build/src/logs/protobuf.js") as { ExportLogsServiceRequest: { decode: (buf: Uint8Array) => unknown } };
-			body = ExportLogsServiceRequest.decode(new Uint8Array(buf)) as Record<string, unknown>;
-		} catch {
-			// Last resort: try the generated proto types
-			try {
-				const proto = await import("@opentelemetry/otlp-transformer");
-				// Try any available deserializer
-				const json = JSON.stringify({ raw_size: buf.byteLength, note: "protobuf decode not available" });
-				await Bun.write(sampleFile, json);
-				log.info("OTLP logs: {size} bytes (protobuf, saved raw)", { size: buf.byteLength });
-				return c.json({});
-			} catch {
-				log.warn("OTLP logs: could not decode {size} bytes", { size: buf.byteLength });
-				return c.json({});
+		log.debug("OTLP logs: protobuf payload ({size} bytes), skipping", { size: buf.byteLength });
+		return c.json({});
+	}
+
+	if (!body?.resourceLogs?.length || !provider) return c.json({});
+
+	// Extract all log records
+	const records: unknown[] = [];
+	for (const rl of body.resourceLogs) {
+		for (const sl of rl.scopeLogs ?? []) {
+			for (const lr of sl.logRecords ?? []) {
+				records.push(lr);
 			}
 		}
 	}
 
-	if (body) {
-		const existing = await Bun.file(sampleFile).exists() ? JSON.parse(await Bun.file(sampleFile).text()) as { allRecords?: unknown[] } : { allRecords: [] };
-		const allRecords = existing.allRecords ?? [];
-		for (const rl of (body as { resourceLogs?: unknown[] }).resourceLogs ?? []) {
-			for (const sl of ((rl as Record<string, unknown>).scopeLogs ?? []) as Array<{ logRecords?: unknown[] }>) {
-				for (const lr of sl.logRecords ?? []) {
-					allRecords.push(lr);
-				}
-			}
-		}
-		await Bun.write(sampleFile, JSON.stringify({ allRecords }, null, 2));
-		let recordCount = 0;
-		const resourceLogs = (body as { resourceLogs?: unknown[] }).resourceLogs ?? [];
-		for (const rl of resourceLogs as Array<{ scopeLogs?: Array<{ logRecords?: unknown[] }> }>) {
-			for (const sl of rl.scopeLogs ?? []) {
-				recordCount += sl.logRecords?.length ?? 0;
-			}
-		}
-		log.info("OTLP logs: {count} records decoded, sample at {file}", { count: recordCount, file: sampleFile });
+	// Convert log records to traces/spans
+	const { processLogRecords } = await import("./otlp-log-converter.js");
+	const result = await processLogRecords(records as Parameters<typeof processLogRecords>[0], provider);
+
+	if (result.spans > 0 || result.traces > 0) {
+		log.info("OTLP logs: {records} records -> {spans} spans, {traces} new traces", {
+			records: records.length,
+			spans: result.spans,
+			traces: result.traces,
+		});
 	}
 
 	return c.json({});
