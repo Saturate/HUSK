@@ -39,14 +39,42 @@ interface ScanResult {
 	}>;
 }
 
+interface LogScanResult {
+	scanner: string;
+	findings: SecretFinding[];
+}
+
 async function fetchSecretScan(): Promise<ScanResult> {
-	const res = await fetch("/telemetry/secrets/scan?limit=100", {
-		credentials: "same-origin",
-		headers: { "Content-Type": "application/json" },
-	});
-	if (res.status === 401) throw new Error("Unauthorized");
-	if (!res.ok) throw new Error("Scan failed");
-	return res.json();
+	const [dbRes, logRes] = await Promise.all([
+		fetch("/telemetry/secrets/scan?limit=100", {
+			credentials: "same-origin",
+			headers: { "Content-Type": "application/json" },
+		}),
+		fetch("/telemetry/secrets/scan/logs", {
+			credentials: "same-origin",
+			headers: { "Content-Type": "application/json" },
+		}),
+	]);
+
+	if (dbRes.status === 401) throw new Error("Unauthorized");
+	if (!dbRes.ok) throw new Error("Scan failed");
+
+	const dbData: ScanResult = await dbRes.json();
+	const logData: LogScanResult = logRes.ok ? await logRes.json() : { scanner: "", findings: [] };
+
+	// Add log file findings as a separate "source"
+	if (logData.findings.length > 0) {
+		dbData.results.push({
+			trace_id: "log-files",
+			project: "Local log files (~/.claude/logs/)",
+			finding_count: logData.findings.length,
+			findings: logData.findings,
+		});
+		dbData.total_findings += logData.findings.length;
+		dbData.traces_with_findings += 1;
+	}
+
+	return dbData;
 }
 
 export function SecretsPage() {

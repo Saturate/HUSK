@@ -1,6 +1,6 @@
 import { getLogger } from "@logtape/logtape";
 import { existsSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { getDb } from "./db.js";
 import type { SpanRow } from "./telemetry.js";
@@ -244,6 +244,69 @@ export async function scanTrace(traceId: string): Promise<SecretFinding[]> {
 		findings.push(...(await scanSpan(span)));
 	}
 	return findings;
+}
+
+export async function scanLogFiles(): Promise<{
+	scanner: string;
+	findings: SecretFinding[];
+}> {
+	const s = getScanner();
+	if (s.name !== "trufflehog") {
+		return { scanner: s.name, findings: [] };
+	}
+
+	const logsDir = join(homedir(), ".claude", "logs");
+	if (!existsSync(logsDir)) {
+		return { scanner: s.name, findings: [] };
+	}
+
+	const tmpFile = join(tmpdir(), `husk-logscan-${crypto.randomUUID()}.txt`);
+	try {
+		// Scan the entire logs directory with trufflehog directly
+		const proc = Bun.spawn(
+			["trufflehog", "filesystem", logsDir, "--json", "--no-update", "--only-verified=false"],
+			{ stdout: "pipe", stderr: "pipe" },
+		);
+		const output = await new Response(proc.stdout).text();
+		await proc.exited;
+
+		const seen = new Map<string, SecretFinding>();
+		for (const line of output.split("\n")) {
+			if (!line.trim()) continue;
+			try {
+				const f = JSON.parse(line) as {
+					DetectorName?: string;
+					Verified?: boolean;
+					Raw?: string;
+					SourceMetadata?: { Data?: { Filesystem?: { file?: string; line?: number } } };
+				};
+				const raw = f.Raw ?? "";
+				const key = `${f.DetectorName}:${raw.slice(0, 12)}`;
+				if (seen.has(key)) continue;
+
+				const file = f.SourceMetadata?.Data?.Filesystem?.file ?? "";
+				const category = file.split("/").pop()?.replace(/-\d{4}-\d{2}-\d{2}\.jsonl$/, "") ?? "unknown";
+
+				seen.set(key, {
+					span_id: "",
+					trace_id: "",
+					span_name: category,
+					tool_name: category,
+					detector: "trufflehog",
+					secret_type: f.DetectorName ?? "unknown",
+					redacted_match: redact(raw),
+					verified: f.Verified ?? false,
+					field: file.split("/").pop() ?? "",
+					started_at: "",
+				});
+			} catch { /* skip */ }
+		}
+
+		return { scanner: s.name, findings: Array.from(seen.values()) };
+	} catch (err) {
+		log.warn("Log file scan failed: {error}", { error: err instanceof Error ? err.message : String(err) });
+		return { scanner: s.name, findings: [] };
+	}
 }
 
 export async function scanRecentTraces(limit = 20): Promise<{
