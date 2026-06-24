@@ -11,51 +11,148 @@ import {
 import { formatCost, formatTokens } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 
-function Bar({ value, max, color }: { value: number; max: number; color: string }) {
-	const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-	return (
-		<div className="flex items-center gap-2">
-			<div className="h-2.5 flex-1 overflow-hidden rounded-full bg-muted">
-				<div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
-			</div>
-		</div>
-	);
+const FAMILY_COLORS: Record<string, string> = {
+	"opus-4-8": "bg-red-500",
+	"opus-4-6": "bg-blue-500",
+	"haiku-4-5": "bg-green-500",
+	"fable-5": "bg-purple-500",
+	"sonnet-4-6": "bg-amber-500",
+};
+const DEFAULT_COLOR = "bg-cyan-500";
+
+interface ModelFamily {
+	family: string;
+	color: string;
+	combined: ModelDetail;
+	variants: ModelDetail[];
 }
 
-function MetricRow({
-	label,
-	models,
+function getFamily(model: string): string {
+	return model
+		.replace("claude-", "")
+		.replace(/\[1m\]$/, "")
+		.replace(/-\d{8}$/, "");
+}
+
+function groupIntoFamilies(models: ModelDetail[]): ModelFamily[] {
+	const map = new Map<string, ModelDetail[]>();
+	for (const m of models) {
+		const fam = getFamily(m.model);
+		const list = map.get(fam) ?? [];
+		list.push(m);
+		map.set(fam, list);
+	}
+
+	const families: ModelFamily[] = [];
+	for (const [family, variants] of map) {
+		const combined: ModelDetail = {
+			model: family,
+			session_count: variants.reduce((s, v) => s + v.session_count, 0),
+			total_turns: variants.reduce((s, v) => s + v.total_turns, 0),
+			total_input_tokens: variants.reduce((s, v) => s + v.total_input_tokens, 0),
+			total_output_tokens: variants.reduce((s, v) => s + v.total_output_tokens, 0),
+			total_cache_read_tokens: variants.reduce((s, v) => s + v.total_cache_read_tokens, 0),
+			total_cache_create_tokens: variants.reduce((s, v) => s + v.total_cache_create_tokens, 0),
+			total_cost_usd: variants.reduce((s, v) => s + v.total_cost_usd, 0),
+			avg_output_per_turn: 0,
+			avg_input_per_turn: 0,
+			avg_cost_per_turn: 0,
+			cache_hit_rate: 0,
+		};
+		if (combined.total_turns > 0) {
+			combined.avg_output_per_turn = Math.round(combined.total_output_tokens / combined.total_turns);
+			combined.avg_input_per_turn = Math.round(combined.total_input_tokens / combined.total_turns);
+			combined.avg_cost_per_turn = combined.total_cost_usd / combined.total_turns;
+		}
+		const totalCacheBase = combined.total_cache_read_tokens + combined.total_cache_create_tokens + combined.total_input_tokens;
+		combined.cache_hit_rate = totalCacheBase > 0 ? combined.total_cache_read_tokens / totalCacheBase : 0;
+
+		families.push({
+			family,
+			color: FAMILY_COLORS[family] ?? DEFAULT_COLOR,
+			combined,
+			variants: variants.sort((a, b) => b.total_turns - a.total_turns),
+		});
+	}
+
+	return families.sort((a, b) => b.combined.total_cost_usd - a.combined.total_cost_usd);
+}
+
+function ComparisonChart({
+	title,
+	families,
 	getValue,
 	formatFn,
-	color,
 }: {
-	label: string;
-	models: ModelDetail[];
+	title: string;
+	families: ModelFamily[];
 	getValue: (m: ModelDetail) => number;
 	formatFn: (n: number) => string;
-	color: string;
 }) {
-	const max = Math.max(...models.map(getValue));
+	const max = Math.max(...families.map((f) => getValue(f.combined)));
+	if (max === 0) return null;
+
 	return (
-		<>
-			<tr>
-				<td colSpan={models.length + 1} className="pb-1 pt-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-					{label}
-				</td>
-			</tr>
-			<tr>
-				<td />
-				{models.map((m) => {
-					const val = getValue(m);
+		<div className="mb-8">
+			<h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</h3>
+			<div className="space-y-1">
+				{families.map((f) => {
+					const val = getValue(f.combined);
+					const pct = (val / max) * 100;
 					return (
-						<td key={m.model} className="px-3 pb-2">
-							<div className="mb-1 text-sm font-medium">{formatFn(val)}</div>
-							<Bar value={val} max={max} color={color} />
-						</td>
+						<div key={f.family}>
+							{/* Family bar */}
+							<div className="flex items-center gap-3">
+								<div className="w-28 shrink-0 truncate text-right text-sm font-medium" title={f.family}>
+									{f.family}
+								</div>
+								<div className="flex-1">
+									<div className="flex items-center gap-2">
+										<div className="h-7 flex-1 overflow-hidden rounded bg-muted">
+											<div
+												className={`h-full rounded ${f.color} flex items-center`}
+												style={{ width: `${pct}%`, minWidth: pct > 0 ? "2px" : "0" }}
+											>
+												{pct > 20 && (
+													<span className="px-2 text-xs font-semibold text-white">{formatFn(val)}</span>
+												)}
+											</div>
+										</div>
+										{pct <= 20 && (
+											<span className="shrink-0 text-xs text-muted-foreground">{formatFn(val)}</span>
+										)}
+									</div>
+								</div>
+							</div>
+							{/* Variant sub-bars (only if >1 variant) */}
+							{f.variants.length > 1 && f.variants.map((v) => {
+								const vval = getValue(v);
+								const vpct = (vval / max) * 100;
+								const label = v.model.replace("claude-", "");
+								return (
+									<div key={v.model} className="flex items-center gap-3 ml-4">
+										<div className="w-24 shrink-0 truncate text-right text-xs text-muted-foreground" title={v.model}>
+											{label}
+										</div>
+										<div className="flex-1">
+											<div className="flex items-center gap-2">
+												<div className="h-3.5 flex-1 overflow-hidden rounded bg-muted">
+													<div
+														className={`h-full rounded ${f.color} opacity-60`}
+														style={{ width: `${vpct}%`, minWidth: vpct > 0 ? "2px" : "0" }}
+													/>
+												</div>
+												<span className="shrink-0 text-xs text-muted-foreground">{formatFn(vval)}</span>
+											</div>
+										</div>
+									</div>
+								);
+							})}
+						</div>
 					);
 				})}
-			</tr>
-		</>
+			</div>
+		</div>
 	);
 }
 
@@ -65,117 +162,91 @@ export function ModelsPage() {
 		queryFn: () => api.getModelDetails(),
 	});
 
-	const models = modelsQuery.data ?? [];
+	const allModels = modelsQuery.data ?? [];
+	const meaningful = allModels.filter((m) => m.total_turns >= 100);
+	const families = groupIntoFamilies(meaningful);
 
 	return (
 		<AppLayout>
-			<h2 className="mb-6 text-2xl font-semibold">Models</h2>
+			<h2 className="mb-2 text-2xl font-semibold">Models</h2>
+			<p className="mb-6 text-sm text-muted-foreground">
+				Model families compared (100+ turns). Variants like [1m] shown as sub-bars.
+			</p>
 
 			{modelsQuery.isLoading ? (
 				<p className="text-sm text-muted-foreground">Loading...</p>
-			) : models.length === 0 ? (
+			) : families.length === 0 ? (
 				<p className="text-sm text-muted-foreground">No model data yet.</p>
 			) : (
 				<>
-					{/* Visual comparison */}
-					<div className="mb-10 overflow-x-auto">
-						<table className="w-full">
-							<thead>
-								<tr>
-									<th className="w-40" />
-									{models.map((m) => (
-										<th key={m.model} className="px-3 pb-3 text-left">
-											<div className="text-sm font-semibold">{m.model}</div>
-											<div className="text-xs text-muted-foreground">
-												{m.session_count} sessions, {m.total_turns.toLocaleString()} turns
-											</div>
-										</th>
-									))}
-								</tr>
-							</thead>
-							<tbody>
-								<MetricRow
-									label="Output tokens / turn"
-									models={models}
-									getValue={(m) => m.avg_output_per_turn}
-									formatFn={formatTokens}
-									color="bg-red-500"
-								/>
-								<MetricRow
-									label="Input tokens / turn"
-									models={models}
-									getValue={(m) => m.avg_input_per_turn}
-									formatFn={formatTokens}
-									color="bg-blue-500"
-								/>
-								<MetricRow
-									label="Cost / turn"
-									models={models}
-									getValue={(m) => m.avg_cost_per_turn}
-									formatFn={formatCost}
-									color="bg-amber-500"
-								/>
-								<MetricRow
-									label="Total cost"
-									models={models}
-									getValue={(m) => m.total_cost_usd}
-									formatFn={formatCost}
-									color="bg-amber-500"
-								/>
-								<MetricRow
-									label="Cache hit rate"
-									models={models}
-									getValue={(m) => m.cache_hit_rate * 100}
-									formatFn={(n) => `${n.toFixed(1)}%`}
-									color="bg-green-500"
-								/>
-								<MetricRow
-									label="Total output tokens"
-									models={models}
-									getValue={(m) => m.total_output_tokens}
-									formatFn={formatTokens}
-									color="bg-red-500/70"
-								/>
-							</tbody>
-						</table>
+					<div className="mb-10 rounded-lg border bg-card p-6">
+						<ComparisonChart
+							title="Output tokens per turn"
+							families={families}
+							getValue={(m) => m.avg_output_per_turn}
+							formatFn={(n) => formatTokens(n) + " tok"}
+						/>
+						<ComparisonChart
+							title="Cost per turn"
+							families={families}
+							getValue={(m) => m.avg_cost_per_turn}
+							formatFn={formatCost}
+						/>
+						<ComparisonChart
+							title="Cache hit rate"
+							families={families}
+							getValue={(m) => m.cache_hit_rate * 100}
+							formatFn={(n) => `${n.toFixed(1)}%`}
+						/>
+						<ComparisonChart
+							title="Total cost"
+							families={families}
+							getValue={(m) => m.total_cost_usd}
+							formatFn={formatCost}
+						/>
 					</div>
 
-					{/* Detail table */}
-					<h3 className="mb-3 text-lg font-medium">Raw numbers</h3>
-					<div className="overflow-x-auto">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Model</TableHead>
-									<TableHead className="text-right">Sessions</TableHead>
-									<TableHead className="text-right">Turns</TableHead>
-									<TableHead className="text-right">Avg out/turn</TableHead>
-									<TableHead className="text-right">Avg in/turn</TableHead>
-									<TableHead className="text-right">Cost/turn</TableHead>
-									<TableHead className="text-right">Total cost</TableHead>
-									<TableHead className="text-right">Cache hit</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{models.map((m) => (
-									<TableRow key={m.model}>
-										<TableCell className="text-sm font-medium">{m.model}</TableCell>
-										<TableCell className="text-right text-sm">{m.session_count}</TableCell>
-										<TableCell className="text-right text-sm">{m.total_turns.toLocaleString()}</TableCell>
-										<TableCell className="text-right text-sm font-medium">{formatTokens(m.avg_output_per_turn)}</TableCell>
-										<TableCell className="text-right text-sm">{formatTokens(m.avg_input_per_turn)}</TableCell>
-										<TableCell className="text-right text-sm">{formatCost(m.avg_cost_per_turn)}</TableCell>
-										<TableCell className="text-right text-sm">{formatCost(m.total_cost_usd)}</TableCell>
-										<TableCell className="text-right text-sm">
-											{m.cache_hit_rate ? `${(m.cache_hit_rate * 100).toFixed(1)}%` : "n/a"}
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</div>
+					<h3 className="mb-3 text-lg font-medium">All variants</h3>
+					<ModelTable models={allModels} />
 				</>
 			)}
 		</AppLayout>
+	);
+}
+
+function ModelTable({ models }: { models: ModelDetail[] }) {
+	return (
+		<div className="overflow-x-auto">
+			<Table>
+				<TableHeader>
+					<TableRow>
+						<TableHead>Model</TableHead>
+						<TableHead className="text-right">Sessions</TableHead>
+						<TableHead className="text-right">Turns</TableHead>
+						<TableHead className="text-right">Avg out/turn</TableHead>
+						<TableHead className="text-right">Avg in/turn</TableHead>
+						<TableHead className="text-right">Cost/turn</TableHead>
+						<TableHead className="text-right">Total cost</TableHead>
+						<TableHead className="text-right">Cache hit</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					{models.map((m) => (
+						<TableRow key={m.model}>
+							<TableCell className="text-sm font-medium">{m.model}</TableCell>
+							<TableCell className="text-right text-sm">{m.session_count}</TableCell>
+							<TableCell className="text-right text-sm">{m.total_turns.toLocaleString()}</TableCell>
+							<TableCell className="text-right text-sm font-medium">{formatTokens(m.avg_output_per_turn)}</TableCell>
+							<TableCell className="text-right text-sm">{formatTokens(m.avg_input_per_turn)}</TableCell>
+							<TableCell className="text-right text-sm">{formatCost(m.avg_cost_per_turn)}</TableCell>
+							<TableCell className="text-right text-sm">{formatCost(m.total_cost_usd)}</TableCell>
+							<TableCell className="text-right text-sm">
+								{m.cache_hit_rate ? `${(m.cache_hit_rate * 100).toFixed(1)}%` : "n/a"}
+							</TableCell>
+						</TableRow>
+					))}
+				</TableBody>
+			</Table>
+		</div>
 	);
 }
