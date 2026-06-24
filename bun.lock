@@ -5,6 +5,13 @@
     "": {
       "name": "yams",
     },
+    "agent": {
+      "name": "@husk/agent",
+      "version": "0.1.0",
+      "dependencies": {
+        "@husk/telemetry-core": "workspace:*",
+      },
+    },
     "cli": {
       "name": "@huskai/cli",
       "version": "0.1.0",
@@ -21,6 +28,10 @@
         "tsup": "^8",
         "typescript": "^5.9",
       },
+    },
+    "packages/telemetry-core": {
+      "name": "@husk/telemetry-core",
+      "version": "0.1.0",
     },
     "plugins/claude-code": {
       "name": "@husk/plugin-claude-code",
@@ -183,9 +194,13 @@
 
     "@huggingface/transformers": ["@huggingface/transformers@3.8.1", "", { "dependencies": { "@huggingface/jinja": "^0.5.3", "onnxruntime-node": "1.21.0", "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4", "sharp": "^0.34.1" } }, "sha512-tsTk4zVjImqdqjS8/AOZg2yNLd1z9S5v+7oUPpXaasDRwEDhB+xnglK1k5cad26lL5/ZIaeREgWWy0bs9y9pPA=="],
 
+    "@husk/agent": ["@husk/agent@workspace:agent"],
+
     "@husk/plugin-claude-code": ["@husk/plugin-claude-code@workspace:plugins/claude-code"],
 
     "@husk/server": ["@husk/server@workspace:server"],
+
+    "@husk/telemetry-core": ["@husk/telemetry-core@workspace:packages/telemetry-core"],
 
     "@husk/website": ["@husk/website@workspace:website"],
 

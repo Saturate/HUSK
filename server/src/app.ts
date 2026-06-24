@@ -16,6 +16,9 @@ import { rateLimiter } from "./rate-limit.js";
 import { sessions } from "./sessions.js";
 import { setup, setupGuard } from "./setup.js";
 import { getStorageProvider } from "./storage.js";
+import { getTelemetryProviderOrNull } from "./telemetry.js";
+import { telemetryApi } from "./telemetry-api.js";
+import { otlpReceiver } from "./otlp-receiver.js";
 
 const log = getLogger(["husk", "server"]);
 
@@ -67,6 +70,15 @@ app.get("/health", async (c) => {
 		}
 	}
 
+	const telemetryProvider = getTelemetryProviderOrNull();
+	if (telemetryProvider) {
+		try {
+			checks.telemetry = (await telemetryProvider.healthy()) ? "ok" : "error";
+		} catch {
+			checks.telemetry = "error";
+		}
+	}
+
 	const overall = checks.database === "ok" ? "ok" : "degraded";
 	return c.json({ status: overall, checks });
 });
@@ -98,6 +110,10 @@ app.route("/api/graph", graphApi);
 
 app.route("/ingest", ingest);
 app.route("/hooks", sessions);
+app.use("/telemetry/*", rateLimiter({ window: 60, max: 120 }));
+app.route("/telemetry", telemetryApi);
+app.use("/v1/*", rateLimiter({ window: 60, max: 200 }));
+app.route("/", otlpReceiver);
 mountMcp(app);
 
 // Serve built UI static assets

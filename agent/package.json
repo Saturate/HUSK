@@ -1,0 +1,14 @@
+{
+	"name": "@husk/agent",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"main": "src/main.ts",
+	"scripts": {
+		"build": "bun build --compile src/main.ts --outfile dist/husk-agent",
+		"dev": "bun run src/main.ts"
+	},
+	"dependencies": {
+		"@husk/telemetry-core": "workspace:*"
+	}
+}

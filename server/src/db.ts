@@ -38,14 +38,12 @@ export function initDb(path?: string): Database {
 			created_at TEXT NOT NULL DEFAULT (datetime('now'))
 		)
 	`);
-	// Migration: add role column if missing (existing DBs)
 	const userCols = db
 		.query<{ name: string; notnull: number }, []>("PRAGMA table_info(users)")
 		.all();
 	const colNames = new Set(userCols.map((c) => c.name));
 	if (!colNames.has("role")) {
 		db.run("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'");
-		// All existing users predate roles, promote them to admin
 		db.run("UPDATE users SET role = 'admin'");
 	}
 	if (!colNames.has("oauth_provider")) {
@@ -56,8 +54,6 @@ export function initDb(path?: string): Database {
 	db.run(
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_users_oauth ON users(oauth_provider, oauth_id) WHERE oauth_provider IS NOT NULL",
 	);
-	// Migration: make password_hash nullable (required for OAuth users)
-	// SQLite can't ALTER COLUMN, so we recreate the table.
 	const pwCol = userCols.find((c) => c.name === "password_hash");
 	if (pwCol?.notnull) {
 		db.run("PRAGMA foreign_keys = OFF");
@@ -116,7 +112,6 @@ export function initDb(path?: string): Database {
 	db.run("CREATE INDEX IF NOT EXISTS idx_memories_git_remote ON memories(git_remote)");
 	db.run("CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope)");
 
-	// Migration: add expires_at column to memories
 	const memCols = db.query<{ name: string }, []>("PRAGMA table_info(memories)").all();
 	if (!memCols.some((c) => c.name === "expires_at")) {
 		db.run("ALTER TABLE memories ADD COLUMN expires_at TEXT");
@@ -198,7 +193,6 @@ export function initDb(path?: string): Database {
 		"CREATE INDEX IF NOT EXISTS idx_workspace_projects_remote ON workspace_projects(git_remote)",
 	);
 
-	// Migration: add workspace_id to memories
 	if (!memCols.some((c) => c.name === "workspace_id")) {
 		db.run(
 			"ALTER TABLE memories ADD COLUMN workspace_id TEXT REFERENCES workspaces(id) ON DELETE SET NULL",
@@ -233,6 +227,95 @@ export function initDb(path?: string): Database {
 		"CREATE UNIQUE INDEX IF NOT EXISTS idx_graph_edges_unique ON graph_edges(source_memory_id, target_memory_id, edge_type)",
 	);
 
+	// --- Telemetry tables ---
+
+	db.run(`
+		CREATE TABLE IF NOT EXISTS traces (
+			id TEXT PRIMARY KEY,
+			trace_id TEXT NOT NULL UNIQUE,
+			api_key_id TEXT NOT NULL REFERENCES api_keys(id),
+			project TEXT,
+			git_branch TEXT,
+			model TEXT,
+			agent_type TEXT,
+			status TEXT NOT NULL DEFAULT 'active',
+			started_at TEXT NOT NULL DEFAULT (datetime('now')),
+			ended_at TEXT,
+			total_input_tokens INTEGER DEFAULT 0,
+			total_output_tokens INTEGER DEFAULT 0,
+			total_cache_read_tokens INTEGER DEFAULT 0,
+			total_cache_create_tokens INTEGER DEFAULT 0,
+			total_cost_usd REAL DEFAULT 0,
+			total_turns INTEGER DEFAULT 0,
+			total_tool_calls INTEGER DEFAULT 0,
+			total_tool_failures INTEGER DEFAULT 0
+		)
+	`);
+	db.run("CREATE INDEX IF NOT EXISTS idx_traces_api_key ON traces(api_key_id)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_traces_project ON traces(project)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_traces_started ON traces(started_at)");
+
+	db.run(`
+		CREATE TABLE IF NOT EXISTS spans (
+			id TEXT PRIMARY KEY,
+			trace_id TEXT NOT NULL REFERENCES traces(trace_id),
+			span_id TEXT NOT NULL,
+			parent_span_id TEXT,
+			name TEXT NOT NULL,
+			kind TEXT NOT NULL,
+			status TEXT NOT NULL DEFAULT 'ok',
+			started_at TEXT NOT NULL,
+			ended_at TEXT,
+			duration_ms INTEGER,
+			tool_name TEXT,
+			input_summary TEXT,
+			exit_code INTEGER,
+			output_size INTEGER,
+			model TEXT,
+			input_tokens INTEGER,
+			output_tokens INTEGER,
+			cache_read_tokens INTEGER,
+			cache_create_tokens INTEGER,
+			cost_usd REAL,
+			attributes TEXT
+		)
+	`);
+	db.run("CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans(trace_id)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_spans_parent ON spans(parent_span_id)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_spans_kind ON spans(kind)");
+	db.run(
+		"CREATE INDEX IF NOT EXISTS idx_spans_tool ON spans(tool_name) WHERE tool_name IS NOT NULL",
+	);
+	db.run("CREATE INDEX IF NOT EXISTS idx_spans_started ON spans(started_at)");
+
+	// Migration: add compression tracking to traces
+	const traceCols = db.query<{ name: string }, []>("PRAGMA table_info(traces)").all();
+	if (!traceCols.some((c) => c.name === "summary")) {
+		db.run("ALTER TABLE traces ADD COLUMN summary TEXT");
+		db.run("ALTER TABLE traces ADD COLUMN last_compressed_at TEXT");
+	}
+
+	// Migration: add linked_trace_id for OTel span links (subagent -> child trace)
+	const spanCols = db.query<{ name: string }, []>("PRAGMA table_info(spans)").all();
+	if (!spanCols.some((c) => c.name === "linked_trace_id")) {
+		db.run("ALTER TABLE spans ADD COLUMN linked_trace_id TEXT");
+	}
+
+	db.run(`
+		CREATE TABLE IF NOT EXISTS telemetry_metrics (
+			id TEXT PRIMARY KEY,
+			date TEXT NOT NULL,
+			api_key_id TEXT NOT NULL REFERENCES api_keys(id),
+			project TEXT,
+			model TEXT,
+			metric_name TEXT NOT NULL,
+			metric_value REAL NOT NULL DEFAULT 0,
+			UNIQUE(date, api_key_id, project, model, metric_name)
+		)
+	`);
+	db.run("CREATE INDEX IF NOT EXISTS idx_metrics_date ON telemetry_metrics(date)");
+	db.run("CREATE INDEX IF NOT EXISTS idx_metrics_project ON telemetry_metrics(project)");
+
 	// Migration: add enrichment columns to observations
 	const obsCols = db.query<{ name: string }, []>("PRAGMA table_info(observations)").all();
 	const obsColNames = new Set(obsCols.map((c) => c.name));
@@ -245,1071 +328,8 @@ export function initDb(path?: string): Database {
 	return db;
 }
 
-// --- Users ---
-
-export function getUserCount(): number {
-	const row = db.query<{ count: number }, []>("SELECT COUNT(*) as count FROM users").get();
-	return row?.count ?? 0;
-}
-
-export interface UserRow {
-	id: string;
-	username: string;
-	password_hash: string | null;
-	role: string;
-	oauth_provider: string | null;
-	oauth_id: string | null;
-	avatar_url: string | null;
-	created_at: string;
-}
-
-export function getUserByUsername(username: string) {
-	return db.query<UserRow, [string]>("SELECT * FROM users WHERE username = ?").get(username);
-}
-
-export function getUserById(id: string) {
-	return db.query<UserRow, [string]>("SELECT * FROM users WHERE id = ?").get(id);
-}
-
-export function getUserByOAuth(provider: string, oauthId: string) {
-	return db
-		.query<UserRow, [string, string]>(
-			"SELECT * FROM users WHERE oauth_provider = ? AND oauth_id = ?",
-		)
-		.get(provider, oauthId);
-}
-
-export function listUsers() {
-	return db.query<UserRow, []>("SELECT * FROM users ORDER BY created_at ASC").all();
-}
-
-export function createUser(
-	username: string,
-	passwordHash: string | null,
-	opts?: { role?: string; oauthProvider?: string; oauthId?: string; avatarUrl?: string },
-): string {
-	const id = crypto.randomUUID();
-	db.query(
-		"INSERT INTO users (id, username, password_hash, role, oauth_provider, oauth_id, avatar_url) VALUES (?, ?, ?, ?, ?, ?, ?)",
-	).run(
-		id,
-		username,
-		passwordHash,
-		opts?.role ?? "user",
-		opts?.oauthProvider ?? null,
-		opts?.oauthId ?? null,
-		opts?.avatarUrl ?? null,
-	);
-	return id;
-}
-
-export function deleteUser(id: string): boolean {
-	const txn = db.transaction(() => {
-		// Delete observations belonging to sessions owned by this user's API keys
-		db.query(
-			"DELETE FROM observations WHERE session_id IN (SELECT id FROM sessions WHERE api_key_id IN (SELECT id FROM api_keys WHERE user_id = ?))",
-		).run(id);
-		// Delete sessions owned by this user's API keys
-		db.query(
-			"DELETE FROM sessions WHERE api_key_id IN (SELECT id FROM api_keys WHERE user_id = ?)",
-		).run(id);
-		// Delete memories owned by this user's API keys
-		db.query(
-			"DELETE FROM memories WHERE api_key_id IN (SELECT id FROM api_keys WHERE user_id = ?)",
-		).run(id);
-		// Delete the user's API keys
-		db.query("DELETE FROM api_keys WHERE user_id = ?").run(id);
-		// Delete invites created by this user
-		db.query("DELETE FROM invites WHERE created_by = ?").run(id);
-		// Delete workspace project assignments and workspaces
-		db.query(
-			"DELETE FROM workspace_projects WHERE workspace_id IN (SELECT id FROM workspaces WHERE created_by = ?)",
-		).run(id);
-		db.query("DELETE FROM workspaces WHERE created_by = ?").run(id);
-		// Delete user settings
-		db.query("DELETE FROM user_settings WHERE user_id = ?").run(id);
-		// Delete the user
-		const result = db.query("DELETE FROM users WHERE id = ?").run(id);
-		return result.changes > 0;
-	});
-	return txn();
-}
-
-// --- API Keys ---
-
-export function createApiKey(params: {
-	userId: string;
-	label: string;
-	keyHash: string;
-	keyPrefix: string;
-	expiresAt: string | null;
-}): string {
-	const id = crypto.randomUUID();
-	db.query(
-		"INSERT INTO api_keys (id, user_id, label, key_hash, key_prefix, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
-	).run(id, params.userId, params.label, params.keyHash, params.keyPrefix, params.expiresAt);
-	return id;
-}
-
-interface ApiKeyRow {
-	id: string;
-	user_id: string;
-	label: string;
-	key_hash: string;
-	key_prefix: string;
-	is_active: number;
-	expires_at: string | null;
-	created_at: string;
-	last_used_at: string | null;
-}
-
-export function getApiKeyByHash(hash: string) {
-	return db.query<ApiKeyRow, [string]>("SELECT * FROM api_keys WHERE key_hash = ?").get(hash);
-}
-
-export function getApiKeyById(id: string) {
-	return db.query<ApiKeyRow, [string]>("SELECT * FROM api_keys WHERE id = ?").get(id);
-}
-
-export function listApiKeys(userId?: string) {
-	if (userId) {
-		return db
-			.query<Omit<ApiKeyRow, "key_hash">, [string]>(
-				"SELECT id, user_id, label, key_prefix, is_active, expires_at, created_at, last_used_at FROM api_keys WHERE user_id = ? ORDER BY created_at DESC",
-			)
-			.all(userId);
-	}
-	return db
-		.query<Omit<ApiKeyRow, "key_hash">, []>(
-			"SELECT id, user_id, label, key_prefix, is_active, expires_at, created_at, last_used_at FROM api_keys ORDER BY created_at DESC",
-		)
-		.all();
-}
-
-export function revokeApiKey(id: string): boolean {
-	const result = db.query("UPDATE api_keys SET is_active = 0 WHERE id = ?").run(id);
-	return result.changes > 0;
-}
-
-export function updateKeyLastUsed(id: string) {
-	db.query("UPDATE api_keys SET last_used_at = datetime('now') WHERE id = ?").run(id);
-}
-
-// --- Memories ---
-
-export interface MemoryRow {
-	id: string;
-	api_key_id: string;
-	git_remote: string | null;
-	scope: string;
-	summary: string;
-	metadata: string | null;
-	created_at: string;
-	expires_at: string | null;
-	workspace_id: string | null;
-}
-
-export function createMemory(params: {
-	id: string;
-	apiKeyId: string;
-	gitRemote?: string | null;
-	scope: string;
-	summary: string;
-	metadata?: string | null;
-	expiresAt?: string | null;
-	workspaceId?: string | null;
-}): string {
-	db.query(
-		"INSERT INTO memories (id, api_key_id, git_remote, scope, summary, metadata, expires_at, workspace_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-	).run(
-		params.id,
-		params.apiKeyId,
-		params.gitRemote ?? null,
-		params.scope,
-		params.summary,
-		params.metadata ?? null,
-		params.expiresAt ?? null,
-		params.workspaceId ?? null,
-	);
-	return params.id;
-}
-
-const EXPIRY_FILTER = "(m.expires_at IS NULL OR m.expires_at > datetime('now'))";
-
-/** @internal System use only — user-facing code should use UserScope */
-export function getMemory(id: string): MemoryRow | undefined {
-	return (
-		db
-			.query<MemoryRow, [string]>(`SELECT * FROM memories m WHERE m.id = ? AND ${EXPIRY_FILTER}`)
-			.get(id) ?? undefined
-	);
-}
-
-export function getMemoryForUser(id: string, userId: string): MemoryRow | undefined {
-	return (
-		db
-			.query<MemoryRow, [string, string]>(
-				`SELECT m.* FROM memories m JOIN api_keys k ON m.api_key_id = k.id WHERE m.id = ? AND k.user_id = ? AND ${EXPIRY_FILTER}`,
-			)
-			.get(id, userId) ?? undefined
-	);
-}
-
-export function listMemories(opts?: {
-	gitRemote?: string;
-	scope?: string;
-	limit?: number;
-	offset?: number;
-	userId?: string;
-}): MemoryRow[] {
-	const conditions: string[] = [EXPIRY_FILTER];
-	const params: (string | number)[] = [];
-
-	if (opts?.gitRemote) {
-		conditions.push("m.git_remote = ?");
-		params.push(opts.gitRemote);
-	}
-	if (opts?.scope) {
-		conditions.push("m.scope = ?");
-		params.push(opts.scope);
-	}
-	if (opts?.userId) {
-		conditions.push("ak.user_id = ?");
-		params.push(opts.userId);
-	}
-
-	const needsJoin = opts?.userId != null;
-	let sql = needsJoin
-		? "SELECT m.* FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id"
-		: "SELECT * FROM memories m";
-
-	sql += ` WHERE ${conditions.join(" AND ")}`;
-	sql += " ORDER BY m.created_at DESC";
-
-	const limit = opts?.limit ?? 100;
-	const offset = opts?.offset ?? 0;
-	sql += " LIMIT ? OFFSET ?";
-	params.push(limit, offset);
-
-	return db.query<MemoryRow, (string | number)[]>(sql).all(...params);
-}
-
-export function updateMemorySummary(id: string, summary: string): void {
-	db.query("UPDATE memories SET summary = ? WHERE id = ?").run(summary, id);
-}
-
-/** @internal System use only — user-facing code should use UserScope */
-export function deleteMemory(id: string): boolean {
-	const result = db.query("DELETE FROM memories WHERE id = ?").run(id);
-	return result.changes > 0;
-}
-
-export function getExpiredMemoryIds(limit: number): string[] {
-	const rows = db
-		.query<{ id: string }, [number]>(
-			"SELECT id FROM memories WHERE expires_at IS NOT NULL AND expires_at < datetime('now') LIMIT ?",
-		)
-		.all(limit);
-	return rows.map((r) => r.id);
-}
-
-export function deleteMemoriesBatch(ids: string[]): number {
-	if (ids.length === 0) return 0;
-	const placeholders = ids.map(() => "?").join(", ");
-	const result = db.query(`DELETE FROM memories WHERE id IN (${placeholders})`).run(...ids);
-	return result.changes;
-}
-
-export function listDistinctGitRemotes(userId?: string): string[] {
-	if (userId) {
-		const rows = db
-			.query<{ git_remote: string }, [string]>(
-				"SELECT DISTINCT m.git_remote FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id WHERE m.git_remote IS NOT NULL AND ak.user_id = ? ORDER BY m.git_remote",
-			)
-			.all(userId);
-		return rows.map((r) => r.git_remote);
-	}
-	const rows = db
-		.query<{ git_remote: string }, []>(
-			"SELECT DISTINCT git_remote FROM memories WHERE git_remote IS NOT NULL ORDER BY git_remote",
-		)
-		.all();
-	return rows.map((r) => r.git_remote);
-}
-
-export function listDistinctScopes(userId?: string): string[] {
-	if (userId) {
-		const rows = db
-			.query<{ scope: string }, [string]>(
-				"SELECT DISTINCT m.scope FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id WHERE ak.user_id = ? ORDER BY m.scope",
-			)
-			.all(userId);
-		return rows.map((r) => r.scope);
-	}
-	const rows = db
-		.query<{ scope: string }, []>("SELECT DISTINCT scope FROM memories ORDER BY scope")
-		.all();
-	return rows.map((r) => r.scope);
-}
-
-export function countMemories(opts?: {
-	gitRemote?: string;
-	scope?: string;
-	userId?: string;
-}): number {
-	const conditions: string[] = [EXPIRY_FILTER];
-	const params: string[] = [];
-
-	if (opts?.gitRemote) {
-		conditions.push("m.git_remote = ?");
-		params.push(opts.gitRemote);
-	}
-	if (opts?.scope) {
-		conditions.push("m.scope = ?");
-		params.push(opts.scope);
-	}
-	if (opts?.userId) {
-		conditions.push("ak.user_id = ?");
-		params.push(opts.userId);
-	}
-
-	const needsJoin = opts?.userId != null;
-	let sql = needsJoin
-		? "SELECT COUNT(*) as count FROM memories m JOIN api_keys ak ON m.api_key_id = ak.id"
-		: "SELECT COUNT(*) as count FROM memories m";
-
-	sql += ` WHERE ${conditions.join(" AND ")}`;
-
-	const row = db.query<{ count: number }, string[]>(sql).get(...params);
-	return row?.count ?? 0;
-}
-
-// --- User Settings ---
-
-export function getUserSetting(userId: string, key: string): string | undefined {
-	const row = db
-		.query<{ value: string }, [string, string]>(
-			"SELECT value FROM user_settings WHERE user_id = ? AND key = ?",
-		)
-		.get(userId, key);
-	return row?.value;
-}
-
-export function setUserSetting(userId: string, key: string, value: string): void {
-	db.query("INSERT OR REPLACE INTO user_settings (user_id, key, value) VALUES (?, ?, ?)").run(
-		userId,
-		key,
-		value,
-	);
-}
-
-export function deleteUserSetting(userId: string, key: string): boolean {
-	const result = db
-		.query("DELETE FROM user_settings WHERE user_id = ? AND key = ?")
-		.run(userId, key);
-	return result.changes > 0;
-}
-
-// --- Workspaces ---
-
-export interface WorkspaceRow {
-	id: string;
-	name: string;
-	created_by: string;
-	created_at: string;
-}
-
-export function createWorkspace(name: string, createdBy: string): string {
-	const id = crypto.randomUUID();
-	db.query("INSERT INTO workspaces (id, name, created_by) VALUES (?, ?, ?)").run(
-		id,
-		name,
-		createdBy,
-	);
-	return id;
-}
-
-export function getWorkspace(id: string): WorkspaceRow | undefined {
-	return (
-		db.query<WorkspaceRow, [string]>("SELECT * FROM workspaces WHERE id = ?").get(id) ?? undefined
-	);
-}
-
-export function getWorkspaceByName(name: string, userId?: string): WorkspaceRow | undefined {
-	if (userId) {
-		return (
-			db
-				.query<WorkspaceRow, [string, string]>(
-					"SELECT * FROM workspaces WHERE name = ? AND created_by = ?",
-				)
-				.get(name, userId) ?? undefined
-		);
-	}
-	return (
-		db.query<WorkspaceRow, [string]>("SELECT * FROM workspaces WHERE name = ?").get(name) ??
-		undefined
-	);
-}
-
-export interface WorkspaceWithCount extends WorkspaceRow {
-	project_count: number;
-}
-
-export function listWorkspaces(userId?: string): WorkspaceWithCount[] {
-	const base =
-		"SELECT w.*, COUNT(wp.git_remote) as project_count FROM workspaces w LEFT JOIN workspace_projects wp ON w.id = wp.workspace_id";
-	if (userId) {
-		return db
-			.query<WorkspaceWithCount, [string]>(
-				`${base} WHERE w.created_by = ? GROUP BY w.id ORDER BY w.name ASC`,
-			)
-			.all(userId);
-	}
-	return db.query<WorkspaceWithCount, []>(`${base} GROUP BY w.id ORDER BY w.name ASC`).all();
-}
-
-export function updateWorkspace(id: string, name: string, userId: string): boolean {
-	const result = db
-		.query("UPDATE workspaces SET name = ? WHERE id = ? AND created_by = ?")
-		.run(name, id, userId);
-	return result.changes > 0;
-}
-
-/**
- * Deletes a workspace, re-scoping any workspace-scoped memories to "project"
- * so they remain findable. Returns the count of re-scoped memories.
- */
-export function deleteWorkspace(id: string): { deleted: boolean; rescopedMemories: number } {
-	const txn = db.transaction(() => {
-		const rescoped = db
-			.query(
-				"UPDATE memories SET scope = 'project', workspace_id = NULL WHERE workspace_id = ? AND scope = 'workspace'",
-			)
-			.run(id);
-		db.query("UPDATE memories SET workspace_id = NULL WHERE workspace_id = ?").run(id);
-		const result = db.query("DELETE FROM workspaces WHERE id = ?").run(id);
-		return { deleted: result.changes > 0, rescopedMemories: rescoped.changes };
-	});
-	return txn();
-}
-
-export function countWorkspaces(): number {
-	const row = db.query<{ count: number }, []>("SELECT COUNT(*) as count FROM workspaces").get();
-	return row?.count ?? 0;
-}
-
-export function assignProjectToWorkspace(workspaceId: string, gitRemote: string): void {
-	db.query("INSERT INTO workspace_projects (workspace_id, git_remote) VALUES (?, ?)").run(
-		workspaceId,
-		gitRemote,
-	);
-}
-
-export function removeProjectFromWorkspace(workspaceId: string, gitRemote: string): boolean {
-	const result = db
-		.query("DELETE FROM workspace_projects WHERE workspace_id = ? AND git_remote = ?")
-		.run(workspaceId, gitRemote);
-	return result.changes > 0;
-}
-
-export function listWorkspaceProjects(workspaceId: string): string[] {
-	const rows = db
-		.query<{ git_remote: string }, [string]>(
-			"SELECT git_remote FROM workspace_projects WHERE workspace_id = ? ORDER BY git_remote",
-		)
-		.all(workspaceId);
-	return rows.map((r) => r.git_remote);
-}
-
-export function getWorkspaceForUser(id: string, userId: string): WorkspaceRow | undefined {
-	return (
-		db
-			.query<WorkspaceRow, [string, string]>(
-				"SELECT * FROM workspaces WHERE id = ? AND created_by = ?",
-			)
-			.get(id, userId) ?? undefined
-	);
-}
-
-export function getWorkspaceForProject(
-	gitRemote: string,
-	userId?: string,
-): WorkspaceRow | undefined {
-	if (userId) {
-		return (
-			db
-				.query<WorkspaceRow, [string, string]>(
-					"SELECT w.* FROM workspaces w JOIN workspace_projects wp ON w.id = wp.workspace_id WHERE wp.git_remote = ? AND w.created_by = ?",
-				)
-				.get(gitRemote, userId) ?? undefined
-		);
-	}
-	return (
-		db
-			.query<WorkspaceRow, [string]>(
-				"SELECT w.* FROM workspaces w JOIN workspace_projects wp ON w.id = wp.workspace_id WHERE wp.git_remote = ?",
-			)
-			.get(gitRemote) ?? undefined
-	);
-}
-
-// --- Invites ---
-
-export interface InviteRow {
-	id: string;
-	email: string;
-	token: string;
-	role: string;
-	created_by: string;
-	created_at: string;
-	expires_at: string;
-	used_at: string | null;
-}
-
-export function createInvite(params: {
-	email: string;
-	role: string;
-	createdBy: string;
-	expiresAt: string;
-}): { id: string; token: string } {
-	const id = crypto.randomUUID();
-	const token = Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toString("base64url");
-	db.query(
-		"INSERT INTO invites (id, email, token, role, created_by, expires_at) VALUES (?, ?, ?, ?, ?, ?)",
-	).run(id, params.email, token, params.role, params.createdBy, params.expiresAt);
-	return { id, token };
-}
-
-export function getInviteByToken(token: string) {
-	return db.query<InviteRow, [string]>("SELECT * FROM invites WHERE token = ?").get(token);
-}
-
-export function listInvites() {
-	return db.query<InviteRow, []>("SELECT * FROM invites ORDER BY created_at DESC").all();
-}
-
-export function deleteInvite(id: string): boolean {
-	const result = db.query("DELETE FROM invites WHERE id = ?").run(id);
-	return result.changes > 0;
-}
-
-export function markInviteUsed(id: string) {
-	db.query("UPDATE invites SET used_at = datetime('now') WHERE id = ?").run(id);
-}
-
-// --- Config ---
-
-export function getConfig(key: string): string | undefined {
-	const row = db
-		.query<{ value: string }, [string]>("SELECT value FROM config WHERE key = ?")
-		.get(key);
-	return row?.value;
-}
-
-export function setConfig(key: string, value: string): void {
-	db.query("INSERT OR REPLACE INTO config (key, value) VALUES (?, ?)").run(key, value);
-}
-
-export function deleteConfig(key: string): boolean {
-	const result = db.query("DELETE FROM config WHERE key = ?").run(key);
-	return result.changes > 0;
-}
-
-export function getConfigWithEnv(key: string, envVar: string): string | undefined {
-	return process.env[envVar] ?? getConfig(key);
-}
-
-// --- Sessions ---
-
-export interface SessionRow {
-	id: string;
-	claude_session_id: string;
-	api_key_id: string;
-	project: string | null;
-	status: string;
-	summary: string | null;
-	started_at: string;
-	ended_at: string | null;
-}
-
-export function findSession(claudeSessionId: string, apiKeyId: string): SessionRow | undefined {
-	return (
-		db
-			.query<SessionRow, [string, string]>(
-				"SELECT * FROM sessions WHERE claude_session_id = ? AND api_key_id = ?",
-			)
-			.get(claudeSessionId, apiKeyId) ?? undefined
-	);
-}
-
-export function createSession(params: {
-	claudeSessionId: string;
-	apiKeyId: string;
-	project?: string | null;
-}): string {
-	const id = crypto.randomUUID();
-	db.query(
-		"INSERT INTO sessions (id, claude_session_id, api_key_id, project) VALUES (?, ?, ?, ?)",
-	).run(id, params.claudeSessionId, params.apiKeyId, params.project ?? null);
-	return id;
-}
-
-export function findOrCreateSession(params: {
-	claudeSessionId: string;
-	apiKeyId: string;
-	project?: string | null;
-}): SessionRow {
-	const existing = findSession(params.claudeSessionId, params.apiKeyId);
-	if (existing) return existing;
-
-	const id = createSession(params);
-	return (
-		findSession(params.claudeSessionId, params.apiKeyId) ?? {
-			id,
-			claude_session_id: params.claudeSessionId,
-			api_key_id: params.apiKeyId,
-			project: params.project ?? null,
-			status: "active",
-			summary: null,
-			started_at: new Date().toISOString(),
-			ended_at: null,
-		}
-	);
-}
-
-export function endSession(id: string): boolean {
-	const result = db
-		.query("UPDATE sessions SET status = 'ended', ended_at = datetime('now') WHERE id = ?")
-		.run(id);
-	return result.changes > 0;
-}
-
-export function updateSessionSummary(id: string, summary: string): void {
-	db.query("UPDATE sessions SET summary = ? WHERE id = ?").run(summary, id);
-}
-
-/** @internal System use only — user-facing code should use UserScope */
-export function getSession(id: string): SessionRow | undefined {
-	return db.query<SessionRow, [string]>("SELECT * FROM sessions WHERE id = ?").get(id) ?? undefined;
-}
-
-export function getSessionForUser(id: string, userId: string): SessionRow | undefined {
-	return (
-		db
-			.query<SessionRow, [string, string]>(
-				"SELECT s.* FROM sessions s JOIN api_keys ak ON s.api_key_id = ak.id WHERE s.id = ? AND ak.user_id = ?",
-			)
-			.get(id, userId) ?? undefined
-	);
-}
-
-export function listSessions(opts?: {
-	userId?: string;
-	project?: string;
-	status?: string;
-	limit?: number;
-	offset?: number;
-}): SessionRow[] {
-	const conditions: string[] = [];
-	const params: (string | number)[] = [];
-
-	if (opts?.userId) {
-		conditions.push("ak.user_id = ?");
-		params.push(opts.userId);
-	}
-	if (opts?.project) {
-		conditions.push("s.project = ?");
-		params.push(opts.project);
-	}
-	if (opts?.status) {
-		conditions.push("s.status = ?");
-		params.push(opts.status);
-	}
-
-	const needsJoin = opts?.userId != null;
-	let sql = needsJoin
-		? "SELECT s.* FROM sessions s JOIN api_keys ak ON s.api_key_id = ak.id"
-		: "SELECT * FROM sessions s";
-
-	if (conditions.length > 0) {
-		sql += ` WHERE ${conditions.join(" AND ")}`;
-	}
-	sql += " ORDER BY s.started_at DESC";
-
-	const limit = opts?.limit ?? 50;
-	const offset = opts?.offset ?? 0;
-	sql += " LIMIT ? OFFSET ?";
-	params.push(limit, offset);
-
-	return db.query<SessionRow, (string | number)[]>(sql).all(...params);
-}
-
-export function countSessions(opts?: { userId?: string; status?: string }): number {
-	const conditions: string[] = [];
-	const params: string[] = [];
-
-	if (opts?.userId) {
-		conditions.push("ak.user_id = ?");
-		params.push(opts.userId);
-	}
-	if (opts?.status) {
-		conditions.push("s.status = ?");
-		params.push(opts.status);
-	}
-
-	const needsJoin = opts?.userId != null;
-	let sql = needsJoin
-		? "SELECT COUNT(*) as count FROM sessions s JOIN api_keys ak ON s.api_key_id = ak.id"
-		: "SELECT COUNT(*) as count FROM sessions s";
-
-	if (conditions.length > 0) {
-		sql += ` WHERE ${conditions.join(" AND ")}`;
-	}
-
-	const row = db.query<{ count: number }, string[]>(sql).get(...params);
-	return row?.count ?? 0;
-}
-
-/** @internal System use only — user-facing code should use UserScope */
-export function deleteSession(id: string): boolean {
-	const txn = db.transaction(() => {
-		db.query("DELETE FROM observations WHERE session_id = ?").run(id);
-		const result = db.query("DELETE FROM sessions WHERE id = ?").run(id);
-		return result.changes > 0;
-	});
-	return txn();
-}
-
-// --- Observations ---
-
-export interface ObservationRow {
-	id: string;
-	session_id: string;
-	event: string;
-	tool_name: string | null;
-	content: string;
-	prompt: string | null;
-	tool_input_summary: string | null;
-	files_modified: string | null;
-	compressed: number;
-	created_at: string;
-}
-
-export function createObservation(params: {
-	sessionId: string;
-	event: string;
-	toolName?: string | null;
-	content: string;
-	prompt?: string | null;
-	toolInputSummary?: string | null;
-	filesModified?: string | null;
-}): string {
-	const id = crypto.randomUUID();
-	const truncated =
-		params.content.length > 50_000 ? params.content.slice(0, 50_000) : params.content;
-	db.query(
-		`INSERT INTO observations (id, session_id, event, tool_name, content, prompt, tool_input_summary, files_modified)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-	).run(
-		id,
-		params.sessionId,
-		params.event,
-		params.toolName ?? null,
-		truncated,
-		params.prompt ?? null,
-		params.toolInputSummary ?? null,
-		params.filesModified ?? null,
-	);
-	return id;
-}
-
-/** @internal System use only — user-facing code should use UserScope */
-export function getObservation(id: string): ObservationRow | undefined {
-	return (
-		db.query<ObservationRow, [string]>("SELECT * FROM observations WHERE id = ?").get(id) ??
-		undefined
-	);
-}
-
-export function getObservationForUser(id: string, userId: string): ObservationRow | undefined {
-	return (
-		db
-			.query<ObservationRow, [string, string]>(
-				"SELECT o.* FROM observations o JOIN sessions s ON o.session_id = s.id JOIN api_keys k ON s.api_key_id = k.id WHERE o.id = ? AND k.user_id = ?",
-			)
-			.get(id, userId) ?? undefined
-	);
-}
-
-export function listObservations(sessionId: string): ObservationRow[] {
-	return db
-		.query<ObservationRow, [string]>(
-			"SELECT * FROM observations WHERE session_id = ? ORDER BY created_at ASC",
-		)
-		.all(sessionId);
-}
-
-export function countObservations(sessionId: string): number {
-	const row = db
-		.query<{ count: number }, [string]>(
-			"SELECT COUNT(*) as count FROM observations WHERE session_id = ?",
-		)
-		.get(sessionId);
-	return row?.count ?? 0;
-}
-
-export function getUncompressedSessions(): SessionRow[] {
-	return db
-		.query<SessionRow, []>(
-			`SELECT DISTINCT s.* FROM sessions s
-			 JOIN observations o ON o.session_id = s.id
-			 WHERE s.status = 'ended' AND o.compressed = 0
-			 ORDER BY s.ended_at ASC`,
-		)
-		.all();
-}
-
-export function getUncompressedObservations(sessionId: string): ObservationRow[] {
-	return db
-		.query<ObservationRow, [string]>(
-			"SELECT * FROM observations WHERE session_id = ? AND compressed = 0 ORDER BY created_at ASC",
-		)
-		.all(sessionId);
-}
-
-export function countUncompressedObservations(sessionId: string): number {
-	const row = db
-		.query<{ count: number }, [string]>(
-			"SELECT COUNT(*) as count FROM observations WHERE session_id = ? AND compressed = 0",
-		)
-		.get(sessionId);
-	return row?.count ?? 0;
-}
-
-export function getSessionFilesModified(sessionId: string): string[] {
-	const rows = db
-		.query<{ files_modified: string }, [string]>(
-			"SELECT DISTINCT files_modified FROM observations WHERE session_id = ? AND files_modified IS NOT NULL",
-		)
-		.all(sessionId);
-
-	const files = new Set<string>();
-	for (const row of rows) {
-		try {
-			const parsed = JSON.parse(row.files_modified) as string[];
-			for (const f of parsed) files.add(f);
-		} catch {
-			/* skip malformed */
-		}
-	}
-	return [...files];
-}
-
-export function markObservationsCompressed(sessionId: string): void {
-	db.query("UPDATE observations SET compressed = 1 WHERE session_id = ? AND compressed = 0").run(
-		sessionId,
-	);
-}
-
-/** Marks only the specified observation IDs as compressed. Returns count of rows affected. */
-export function markObservationsByIds(ids: string[]): number {
-	if (ids.length === 0) return 0;
-	const placeholders = ids.map(() => "?").join(", ");
-	const result = db
-		.query(
-			`UPDATE observations SET compressed = 1 WHERE id IN (${placeholders}) AND compressed = 0`,
-		)
-		.run(...ids);
-	return result.changes;
-}
-
-/** Returns uncompressed observations for a session, scoped to the owning user. */
-export function getUncompressedObservationsForUser(
-	sessionId: string,
-	userId: string,
-	limit?: number,
-): ObservationRow[] {
-	const effectiveLimit = Math.min(Math.max(limit ?? 50, 1), 100);
-	return db
-		.query<ObservationRow, [string, string, number]>(
-			`SELECT o.* FROM observations o
-			 JOIN sessions s ON o.session_id = s.id
-			 JOIN api_keys k ON s.api_key_id = k.id
-			 WHERE o.session_id = ? AND k.user_id = ? AND o.compressed = 0
-			 ORDER BY o.created_at ASC
-			 LIMIT ?`,
-		)
-		.all(sessionId, userId, effectiveLimit);
-}
-
-/** Verifies all observation IDs belong to a single session. */
-export function validateObservationsBelongToSession(ids: string[], sessionId: string): boolean {
-	if (ids.length === 0) return true;
-	const placeholders = ids.map(() => "?").join(", ");
-	const row = db
-		.query<{ count: number }, string[]>(
-			`SELECT COUNT(*) as count FROM observations WHERE id IN (${placeholders}) AND session_id = ?`,
-		)
-		.get(...ids, sessionId);
-	return (row?.count ?? 0) === ids.length;
-}
-
-/** Verifies all observation IDs belong to sessions owned by this user. */
-export function validateObservationIds(ids: string[], userId: string): boolean {
-	if (ids.length === 0) return true;
-	const placeholders = ids.map(() => "?").join(", ");
-	const row = db
-		.query<{ count: number }, string[]>(
-			`SELECT COUNT(*) as count FROM observations o
-			 JOIN sessions s ON o.session_id = s.id
-			 JOIN api_keys k ON s.api_key_id = k.id
-			 WHERE o.id IN (${placeholders}) AND k.user_id = ?`,
-		)
-		.get(...ids, userId);
-	return (row?.count ?? 0) === ids.length;
-}
-
-export function getStaleActiveSessions(intervalMinutes: number): SessionRow[] {
-	return db
-		.query<SessionRow, [number]>(
-			`SELECT DISTINCT s.* FROM sessions s
-			 JOIN observations o ON o.session_id = s.id
-			 WHERE s.status = 'active' AND o.compressed = 0
-			 AND o.created_at <= datetime('now', '-' || ? || ' minutes')
-			 ORDER BY s.started_at ASC`,
-		)
-		.all(intervalMinutes);
-}
-
-export function getRecentSessionSummaries(opts: {
-	userId: string;
-	project?: string | null;
-	limit?: number;
-}): SessionRow[] {
-	const conditions = ["ak.user_id = ?", "s.summary IS NOT NULL"];
-	const params: (string | number)[] = [opts.userId];
-
-	if (opts.project) {
-		conditions.push("s.project = ?");
-		params.push(opts.project);
-	}
-
-	const limit = opts.limit ?? 5;
-	params.push(limit);
-
-	return db
-		.query<SessionRow, (string | number)[]>(
-			`SELECT s.* FROM sessions s
-			 JOIN api_keys ak ON s.api_key_id = ak.id
-			 WHERE ${conditions.join(" AND ")}
-			 ORDER BY s.started_at DESC
-			 LIMIT ?`,
-		)
-		.all(...params);
-}
-
-// --- JWT Secret ---
-
-export function getOrCreateJwtSecret(): string {
-	const envSecret = process.env.HUSK_JWT_SECRET;
-	if (envSecret) return envSecret;
-
-	const row = db
-		.query<{ value: string }, [string]>("SELECT value FROM config WHERE key = ?")
-		.get("jwt_secret");
-
-	if (row) return row.value;
-
-	const secret = Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString("hex");
-	db.query("INSERT INTO config (key, value) VALUES (?, ?)").run("jwt_secret", secret);
-	return secret;
-}
-
-// --- UserScope: scoped data access for user-facing code ---
-
-/**
- * Scoped data access that guarantees all queries are filtered by user ownership.
- * User-facing code (MCP, admin routes, graph API) should use this instead of
- * calling unscoped db functions directly.
- */
-export class UserScope {
-	constructor(readonly userId: string) {}
-
-	// --- Memories ---
-
-	getMemory(id: string): MemoryRow | undefined {
-		return getMemoryForUser(id, this.userId);
-	}
-
-	listMemories(opts?: {
-		gitRemote?: string;
-		scope?: string;
-		limit?: number;
-		offset?: number;
-	}): MemoryRow[] {
-		return listMemories({ ...opts, userId: this.userId });
-	}
-
-	countMemories(opts?: { gitRemote?: string; scope?: string }): number {
-		return countMemories({ ...opts, userId: this.userId });
-	}
-
-	deleteMemory(id: string): boolean {
-		const memory = getMemoryForUser(id, this.userId);
-		if (!memory) return false;
-		return deleteMemory(id);
-	}
-
-	listGitRemotes(): string[] {
-		return listDistinctGitRemotes(this.userId);
-	}
-
-	listScopes(): string[] {
-		return listDistinctScopes(this.userId);
-	}
-
-	// --- Sessions ---
-
-	getSession(id: string): SessionRow | undefined {
-		return getSessionForUser(id, this.userId);
-	}
-
-	listSessions(opts?: {
-		project?: string;
-		status?: string;
-		limit?: number;
-		offset?: number;
-	}): SessionRow[] {
-		return listSessions({ ...opts, userId: this.userId });
-	}
-
-	countSessions(opts?: { status?: string }): number {
-		return countSessions({ ...opts, userId: this.userId });
-	}
-
-	deleteSession(id: string): boolean {
-		const session = getSessionForUser(id, this.userId);
-		if (!session) return false;
-		return deleteSession(id);
-	}
-
-	// --- Observations ---
-
-	getObservation(id: string): ObservationRow | undefined {
-		return getObservationForUser(id, this.userId);
-	}
-
-	getUncompressedObservations(sessionId: string, limit?: number): ObservationRow[] {
-		return getUncompressedObservationsForUser(sessionId, this.userId, limit);
-	}
-
-	validateObservationIds(ids: string[]): boolean {
-		return validateObservationIds(ids, this.userId);
-	}
-
-	// --- Workspaces ---
-
-	resolveWorkspaceForRemote(gitRemote: string): WorkspaceRow | undefined {
-		return getWorkspaceForProject(gitRemote, this.userId);
-	}
-}
+// Re-export everything from split files for backward compatibility
+export * from "./db-users.js";
+export * from "./db-sessions.js";
+export * from "./db-memories.js";
+export * from "./db-scope.js";

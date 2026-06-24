@@ -1,10 +1,8 @@
-import { useAuth } from "@/auth-context";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { randomBackronym } from "@/husk";
+import { AppSidebar, SidebarProvider, useSidebar } from "@/components/sidebar";
 import { cn } from "@/lib/utils";
-import { type ReactNode, useMemo } from "react";
-import { Link, useLocation } from "react-router";
+import { Menu } from "lucide-react";
+import type { ReactNode } from "react";
 
 export function AuthLayout({
 	title,
@@ -28,66 +26,55 @@ export function AuthLayout({
 	);
 }
 
-interface NavItem {
-	to: string;
-	label: string;
-	adminOnly?: boolean;
-}
-
-const NAV_ITEMS: NavItem[] = [
-	{ to: "/dashboard", label: "Dashboard" },
-	{ to: "/keys", label: "API Keys" },
-	{ to: "/memories", label: "Memories" },
-	{ to: "/sessions", label: "Sessions" },
-	{ to: "/graph", label: "Graph" },
-	{ to: "/timeline", label: "Timeline" },
-	{ to: "/workspaces", label: "Workspaces" },
-	{ to: "/users", label: "Users", adminOnly: true },
-	{ to: "/settings", label: "Settings" },
-];
-
-export function AppLayout({ children }: { children: ReactNode }) {
-	const { logout, isAdmin, username } = useAuth();
-	const { pathname } = useLocation();
-	const acronym = useMemo(() => randomBackronym(), []);
+function AppLayoutInner({ children }: { children: ReactNode }) {
+	const { isOpen, isMobile, toggle, close } = useSidebar();
 
 	return (
-		<div className="min-h-svh">
+		<div className="flex h-svh">
+			<AppSidebar />
+
+			{isMobile && isOpen && (
+				<div
+					className="fixed inset-0 z-30 bg-black/50"
+					onClick={close}
+					onKeyDown={(e) => e.key === "Escape" && close()}
+				/>
+			)}
+
+			<div className="flex flex-1 flex-col overflow-hidden">
+				{/* Mobile header */}
+				<header className="flex h-12 shrink-0 items-center gap-3 border-b px-4 md:hidden">
+					<button
+						onClick={toggle}
+						className="rounded-md p-1 hover:bg-accent"
+						aria-label="Toggle sidebar"
+					>
+						<Menu className="h-5 w-5" />
+					</button>
+					<span className="text-sm font-semibold">HUSK</span>
+				</header>
+
+				<main
+					id="main-content"
+					className={cn("flex-1 overflow-y-auto p-6")}
+				>
+					<div className="mx-auto max-w-6xl">{children}</div>
+				</main>
+			</div>
+		</div>
+	);
+}
+
+export function AppLayout({ children }: { children: ReactNode }) {
+	return (
+		<SidebarProvider>
 			<a
 				href="#main-content"
 				className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:rounded focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow-lg"
 			>
 				Skip to content
 			</a>
-			<header className="border-b">
-				<div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4">
-					<h1 className="text-lg font-semibold" title={acronym}>
-						HUSK
-					</h1>
-					<nav aria-label="Main navigation" className="flex gap-1">
-						{NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin).map((item) => (
-							<Button
-								key={item.to}
-								variant="ghost"
-								size="sm"
-								asChild
-								className={cn(pathname === item.to && "bg-accent")}
-							>
-								<Link to={item.to}>{item.label}</Link>
-							</Button>
-						))}
-					</nav>
-					<div className="ml-auto flex items-center gap-2">
-						{username && <span className="text-sm text-muted-foreground">{username}</span>}
-						<Button variant="ghost" size="sm" onClick={logout}>
-							Log out
-						</Button>
-					</div>
-				</div>
-			</header>
-			<main id="main-content" className="mx-auto max-w-5xl px-4 py-6">
-				{children}
-			</main>
-		</div>
+			<AppLayoutInner>{children}</AppLayoutInner>
+		</SidebarProvider>
 	);
 }

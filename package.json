@@ -1,5 +1,5 @@
 {
 	"name": "husk",
 	"private": true,
-	"workspaces": ["server", "cli", "plugins/*", "website"]
+	"workspaces": ["server", "cli", "plugins/*", "packages/*", "agent", "website"]
 }

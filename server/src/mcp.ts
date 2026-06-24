@@ -23,6 +23,8 @@ import { getProvider } from "./embeddings.js";
 import { EDGE_TYPES, getGraphProviderOrNull } from "./graph.js";
 import { StoreMemoryError, isDuplicate, storeMemory } from "./ingest.js";
 import { getStorageProvider } from "./storage.js";
+import { registerTelemetryTools } from "./mcp-telemetry.js";
+import { getTelemetryProviderOrNull } from "./telemetry.js";
 import { resolveWorkspace } from "./workspace.js";
 
 const log = getLogger(["husk", "mcp"]);
@@ -1027,9 +1029,9 @@ Be conservative — when in doubt, keep the memory. Only remove things you're co
 		{
 			title: "Compress Session",
 			description:
-				"Summarize accumulated observations for the current session. Reads uncompressed observations, writes a structured summary, and marks them as compressed.",
+				"Summarize a session trace into a structured knowledge summary. Reviews prompts, tool actions, and errors, then stores the summary as a searchable memory.",
 			argsSchema: {
-				session_id: z.string().describe("The session ID to compress observations for"),
+				session_id: z.string().describe("The session or trace ID to compress"),
 			},
 		},
 		(args) => {
@@ -1039,11 +1041,13 @@ Be conservative — when in doubt, keep the memory. Only remove things you're co
 						role: "user" as const,
 						content: {
 							type: "text" as const,
-							text: `Compress the uncompressed observations for session "${args.session_id}". Follow these steps:
+							text: `Compress session trace "${args.session_id}". Follow these steps:
 
-1. Call get_uncompressed_observations with session_id "${args.session_id}" to fetch the pending observations.
+1. Call get_trace_summary with trace_id "${args.session_id}" to see what happened in this session.
 
-2. Read through all observations and write a structured summary with these sections:
+2. If you need more detail on specific areas, use get_trace_spans to drill into prompts, tool actions, or errors.
+
+3. Write a structured summary with these sections:
 
 ## Request
 What the user asked to accomplish (1-2 sentences).
@@ -1057,7 +1061,7 @@ Key decisions, constraints, or patterns discovered.
 ## Next Steps
 Unfinished work or open questions.
 
-3. Call compress_observations with the observation IDs from step 1 and your summary from step 2.
+4. Call compress_trace with trace_id "${args.session_id}" to store the summary as a searchable memory.
 
 Be specific — this summary will restore context in future sessions.`,
 						},
@@ -1066,6 +1070,12 @@ Be specific — this summary will restore context in future sessions.`,
 			};
 		},
 	);
+
+	// --- Telemetry tools (only when telemetry layer is active) ---
+	const telemetry = getTelemetryProviderOrNull();
+	if (telemetry) {
+		registerTelemetryTools(server, telemetry);
+	}
 
 	return server;
 }

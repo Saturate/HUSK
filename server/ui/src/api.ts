@@ -230,6 +230,92 @@ export interface GraphResponse {
 	edges: GraphEdge[];
 }
 
+// --- Telemetry types ---
+
+export interface TelemetryOverview {
+	today: { cost: number; sessions: number; turns: number };
+	week: { cost: number; sessions: number; turns: number };
+	month: { cost: number; sessions: number; turns: number };
+}
+
+export interface ProjectCost {
+	project: string;
+	total_cost_usd: number;
+	session_count: number;
+	total_turns: number;
+}
+
+export interface ModelCost {
+	model: string;
+	total_cost_usd: number;
+	total_input_tokens: number;
+	total_output_tokens: number;
+	session_count: number;
+}
+
+export interface ToolStat {
+	tool_name: string;
+	call_count: number;
+	failure_count: number;
+	failure_rate: number;
+	avg_duration_ms: number;
+	p95_duration_ms: number;
+}
+
+export interface DailyCost {
+	date: string;
+	total_cost_usd: number;
+	session_count: number;
+	total_turns: number;
+}
+
+export interface TraceRow {
+	id: string;
+	trace_id: string;
+	api_key_id: string;
+	project: string | null;
+	git_branch: string | null;
+	model: string | null;
+	agent_type: string | null;
+	status: string;
+	started_at: string;
+	ended_at: string | null;
+	total_cost_usd: number;
+	total_turns: number;
+	total_tool_calls: number;
+	total_input_tokens: number;
+	total_output_tokens: number;
+}
+
+export interface SpanRow {
+	id: string;
+	trace_id: string;
+	span_id: string;
+	parent_span_id: string | null;
+	name: string;
+	kind: string;
+	status: string;
+	started_at: string;
+	ended_at: string | null;
+	duration_ms: number | null;
+	tool_name: string | null;
+	input_summary: string | null;
+	exit_code: number | null;
+	output_size: number | null;
+	model: string | null;
+	input_tokens: number | null;
+	output_tokens: number | null;
+	cache_read_tokens: number | null;
+	cache_create_tokens: number | null;
+	cost_usd: number | null;
+	attributes: string | null;
+}
+
+export interface TraceDetail {
+	trace: TraceRow;
+	spans: SpanRow[];
+}
+
 export const api = {
 	setup(username: string, password: string) {
 		return request<SetupResponse>("/setup", {
@@ -486,5 +572,58 @@ export const api = {
 			method: "PUT",
 			body: JSON.stringify({ enabled }),
 		});
+	},
+
+	// --- Telemetry ---
+
+	getTelemetryOverview() {
+		return request<TelemetryOverview>("/telemetry/stats/overview");
+	},
+
+	getTelemetryProjects(from?: string, to?: string) {
+		const params = new URLSearchParams();
+		if (from) params.set("from", from);
+		if (to) params.set("to", to);
+		const qs = params.toString();
+		return request<ProjectCost[]>(`/telemetry/stats/projects${qs ? `?${qs}` : ""}`);
+	},
+
+	getTelemetryModels(from?: string, to?: string) {
+		const params = new URLSearchParams();
+		if (from) params.set("from", from);
+		if (to) params.set("to", to);
+		const qs = params.toString();
+		return request<ModelCost[]>(`/telemetry/stats/models${qs ? `?${qs}` : ""}`);
+	},
+
+	getTelemetryTools(from?: string, to?: string) {
+		const params = new URLSearchParams();
+		if (from) params.set("from", from);
+		if (to) params.set("to", to);
+		const qs = params.toString();
+		return request<ToolStat[]>(`/telemetry/stats/tools${qs ? `?${qs}` : ""}`);
+	},
+
+	getTelemetryDaily(from?: string, to?: string) {
+		const params = new URLSearchParams();
+		if (from) params.set("from", from);
+		if (to) params.set("to", to);
+		const qs = params.toString();
+		return request<DailyCost[]>(`/telemetry/stats/daily${qs ? `?${qs}` : ""}`);
+	},
+
+	getTraces(opts?: { project?: string; model?: string; status?: string; limit?: number; offset?: number }) {
+		const params = new URLSearchParams();
+		if (opts?.project) params.set("project", opts.project);
+		if (opts?.model) params.set("model", opts.model);
+		if (opts?.status) params.set("status", opts.status);
+		if (opts?.limit) params.set("limit", String(opts.limit));
+		if (opts?.offset) params.set("offset", String(opts.offset));
+		const qs = params.toString();
+		return request<TraceRow[]>(`/telemetry/traces${qs ? `?${qs}` : ""}`);
+	},
+
+	getTraceDetail(traceId: string) {
+		return request<TraceDetail>(`/telemetry/traces/${encodeURIComponent(traceId)}`);
 	},
 };

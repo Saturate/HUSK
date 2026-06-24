@@ -5,37 +5,8 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"
-					}
-				]
-			}
-		],
-		"PostToolUse": [
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/observation.sh"
-					}
-				]
-			}
-		],
-		"UserPromptSubmit": [
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/observation.sh"
-					}
-				]
-			}
-		],
-		"Stop": [
-			{
-				"hooks": [
-					{
-						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/observation.sh"
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
 					}
 				]
 			}
@@ -45,7 +16,206 @@
 				"hooks": [
 					{
 						"type": "command",
-						"command": "${CLAUDE_PLUGIN_ROOT}/hooks/session-end.sh"
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"Stop": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"StopFailure": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PreToolUse": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PostToolUse": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PostToolUseFailure": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PostToolBatch": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"UserPromptSubmit": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"SubagentStart": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"SubagentStop": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PreCompact": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PostCompact": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"Notification": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PermissionRequest": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"PermissionDenied": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"ConfigChange": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"WorktreeCreate": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"WorktreeRemove": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
+					}
+				]
+			}
+		],
+		"InstructionsLoaded": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "${HUSK_AGENT_BIN:-husk-agent}",
+						"timeout": 10000
 					}
 				]
 			}

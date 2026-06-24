@@ -7,10 +7,12 @@ import { InvitePage } from "@/pages/invite";
 import { KeysPage } from "@/pages/keys";
 import { LoginPage } from "@/pages/login";
 import { MemoriesPage } from "@/pages/memories";
-import { SessionsPage } from "@/pages/sessions";
+import { ProjectsPage } from "@/pages/projects";
 import { SettingsPage } from "@/pages/settings";
 import { SetupPage } from "@/pages/setup";
 import { TimelinePage } from "@/pages/timeline";
+import { TraceDetailPage } from "@/pages/trace-detail";
+import { TracingPage } from "@/pages/tracing";
 import { UsersPage } from "@/pages/users";
 import { WorkspacesPage } from "@/pages/workspaces";
 import { ThemeProvider } from "@/theme-context";
@@ -49,9 +51,11 @@ export function App() {
 							<Route path="/invite/:token" element={<InvitePage />} />
 							<Route element={<ProtectedRoute />}>
 								<Route path="/dashboard" element={<DashboardPage />} />
+								<Route path="/tracing" element={<TracingPage />} />
+								<Route path="/tracing/:traceId" element={<TraceDetailPage />} />
+								<Route path="/projects" element={<ProjectsPage />} />
 								<Route path="/keys" element={<KeysPage />} />
 								<Route path="/memories" element={<MemoriesPage />} />
-								<Route path="/sessions" element={<SessionsPage />} />
 								<Route path="/graph" element={<GraphPage />} />
 								<Route path="/timeline" element={<TimelinePage />} />
 								<Route path="/workspaces" element={<WorkspacesPage />} />

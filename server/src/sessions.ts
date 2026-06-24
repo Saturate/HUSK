@@ -15,6 +15,7 @@ import {
 } from "./db.js";
 import type { AppEnv } from "./env.js";
 import { bus } from "./events.js";
+import { formatInsights, synthesizeInsights } from "./context.js";
 import { applyPrivacyFilters } from "./privacy.js";
 import { resolveWorkspace } from "./workspace.js";
 
@@ -175,6 +176,20 @@ sessions.post("/session-start", async (c) => {
 	});
 
 	let additionalContext = `Previous session context:\n${contextLines.join("\n")}`;
+
+	// Append telemetry-derived insights
+	try {
+		const gitBranch =
+			typeof body.git_branch === "string" ? body.git_branch : null;
+		const insights = await synthesizeInsights({
+			userId: apiKey.user_id,
+			project,
+			gitBranch,
+		});
+		additionalContext += formatInsights(insights);
+	} catch {
+		// Telemetry insights are best-effort
+	}
 
 	// When compression is client-mode, tell the LLM how to compress
 	const compressionMode = getConfigWithEnv("compression_mode", "HUSK_COMPRESSION_MODE") ?? "client";

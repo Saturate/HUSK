@@ -8,6 +8,8 @@ import { initGraph } from "./graph.js";
 import { initLogging } from "./logger.js";
 import { initRetentionSweeper } from "./retention.js";
 import { initStorage } from "./storage.js";
+import { initTelemetry } from "./telemetry.js";
+import { initTraceCompressionListener, runTraceCompressionCycle } from "./trace-compression-listener.js";
 
 loadConfig();
 await initLogging();
@@ -45,13 +47,25 @@ initGraph().catch((err: unknown) =>
 	}),
 );
 
+initTelemetry().catch((err: unknown) =>
+	log.warn("Telemetry not available: {error}", {
+		error: err instanceof Error ? err.message : String(err),
+	}),
+);
+
 if (getProvider().name === "ollama") {
 	checkOllamaModel();
 }
 initCompressionListener();
+initTraceCompressionListener();
 initRetentionSweeper();
 runCompressionCycle().catch((err: unknown) =>
 	log.warn("Compression catch-up failed: {error}", {
+		error: err instanceof Error ? err.message : String(err),
+	}),
+);
+runTraceCompressionCycle().catch((err: unknown) =>
+	log.warn("Trace compression catch-up failed: {error}", {
 		error: err instanceof Error ? err.message : String(err),
 	}),
 );

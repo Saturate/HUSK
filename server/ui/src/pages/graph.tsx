@@ -85,7 +85,7 @@ export function GraphPage() {
 
 	return (
 		<AppLayout>
-			<div className="-mx-4 -mt-6 relative" style={{ height: "calc(100vh - 3.5rem)" }}>
+			<div className="-mx-6 -mt-6 -mb-6 relative" style={{ height: "calc(100svh - 3rem)" }}>
 				{/* Filter bar */}
 				<div className="absolute top-4 left-4 z-10 flex gap-2 rounded-lg bg-background/80 p-2 backdrop-blur-sm">
 					<Select value={selectedProject} onValueChange={setSelectedProject}>

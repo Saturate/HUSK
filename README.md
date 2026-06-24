@@ -10,6 +10,24 @@ Self-hosted memory layer for AI coding assistants. Captures what you work on, re
   <img src="demo.gif" alt="HUSK demo" width="640">
 </p>
 
+## Components
+
+HUSK is built on three layers — each one is swappable via configuration:
+
+| Component      | Options                                                        |
+| -------------- | -------------------------------------------------------------- |
+| **Server**     | Bun + Hono — HTTP API, MCP endpoint, admin UI, SQLite metadata |
+| **Embeddings** | Ollama, OpenAI, Voyage AI, Transformers.js (local), llama.cpp  |
+| **Vector store** | Qdrant, SQLite-vec (local)                                   |
+| **Compression** | Anthropic, OpenRouter, Ollama                                 |
+| **Graph**      | SQLite, Neo4j                                                  |
+
+For a **fully local, zero-dependency** setup (no Docker, no external services), use Transformers.js + SQLite-vec:
+
+```bash
+HUSK_EMBEDDINGS=transformers HUSK_STORAGE=sqlite-vec bun run dev
+```
+
 ## Quick start
 
 ```bash
@@ -19,7 +37,7 @@ cd HUSK
 docker compose up -d
 ```
 
-This starts HUSK, Qdrant, and Ollama - and auto-pulls the embedding model on first run.
+This starts HUSK with Qdrant and Ollama via Docker and auto-pulls the embedding model on first run. See [Components](#components) for alternatives.
 
 Open `http://localhost:3000/setup` to create your admin account.
 
@@ -159,7 +177,7 @@ husk.example.com {
 ## Development
 
 ```bash
-# Start Qdrant + Ollama (server runs locally)
+# Start Qdrant + Ollama, or skip Docker with local-only backends (see Components)
 docker compose -f docker-compose.dev.yml up -d
 
 # Install deps

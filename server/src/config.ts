@@ -30,6 +30,12 @@ const TOML_TO_ENV: Record<string, string> = {
 	"graph.user": "HUSK_GRAPH_USER",
 	"graph.password": "HUSK_GRAPH_PASSWORD",
 
+	"telemetry.backend": "HUSK_TELEMETRY",
+	"telemetry.url": "HUSK_TELEMETRY_URL",
+	"telemetry.otlp_endpoint": "HUSK_OTLP_ENDPOINT",
+
+	"otlp.auth_required": "HUSK_OTLP_AUTH",
+
 	"auth.github_client_id": "GITHUB_CLIENT_ID",
 	"auth.github_client_secret": "GITHUB_CLIENT_SECRET",
 	"auth.oauth_allowed_orgs": "OAUTH_ALLOWED_ORGS",
