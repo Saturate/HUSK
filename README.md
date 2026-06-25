@@ -1,57 +1,91 @@
 # HUSK
 
-- **H**elpful **U**niversal **S**torage for **K**nowledge
-- **H**andy **U**tility for **S**aving **K**nowledge
-- ...you get the idea
+OTel-native observability and context engineering for AI coding agents.
 
-Self-hosted memory layer for AI coding assistants. Captures what you work on, remembers cross-project patterns, and surfaces relevant context - across all your machines and tools.
+Collects traces from Claude Code (and other agents), stores them as OTel spans, runs trufflehog against the trace data to find leaked secrets, breaks down cost and token usage per model, and compresses sessions into knowledge that gets injected into future sessions via MCP. You can look up what happened in any session through the web UI. The agent can query its own history whenever it needs to.
 
-<p align="center">
-  <img src="demo.gif" alt="HUSK demo" width="640">
-</p>
+## How it works
 
-## Components
+```mermaid
+graph LR
+    A[Coding Agent] -->|OTel traces| B[HUSK]
+    A -->|Hooks| B
+    A <-->|MCP tools| B
+    B --> C[Traces & Spans]
+    C --> D[Knowledge Pipeline]
+    D --> E[Session Summaries]
+    E -->|Context injection| A
+    C --> F[Secret Scanner]
+    C --> G[Usage Analytics]
+```
 
-HUSK is built on three layers — each one is swappable via configuration:
+HUSK receives telemetry, stores it as OTel-shaped traces and spans, then runs three pipelines: knowledge derivation (compress sessions into searchable memories), secret scanning (flag leaked credentials via trufflehog), and usage analytics (cost, tokens, model comparison).
 
-| Component      | Options                                                        |
-| -------------- | -------------------------------------------------------------- |
-| **Server**     | Bun + Hono — HTTP API, MCP endpoint, admin UI, SQLite metadata |
-| **Embeddings** | Ollama, OpenAI, Voyage AI, Transformers.js (local), llama.cpp  |
-| **Vector store** | Qdrant, SQLite-vec (local)                                   |
-| **Compression** | Anthropic, OpenRouter, Ollama                                 |
-| **Graph**      | SQLite, Neo4j                                                  |
-
-For a **fully local, zero-dependency** setup (no Docker, no external services), use Transformers.js + SQLite-vec:
-
-```bash
-HUSK_EMBEDDINGS=transformers HUSK_STORAGE=sqlite-vec bun run dev
+```mermaid
+graph TB
+    subgraph Ingestion
+        OTel[OTLP Receiver]
+        Hooks[Hook Endpoints]
+        API[Custom API]
+    end
+    subgraph Storage
+        SQLite[(SQLite)]
+        Postgres[(PostgreSQL)]
+    end
+    subgraph Intelligence
+        Knowledge[Knowledge Pipeline]
+        Secrets[Secret Scanner]
+        Stats[Usage Analytics]
+        Context[Context Engine]
+    end
+    subgraph Interfaces
+        UI[Web Dashboard]
+        MCP[MCP Tools]
+        Export[OTLP Export]
+    end
+    OTel --> SQLite
+    Hooks --> SQLite
+    API --> SQLite
+    OTel --> Postgres
+    SQLite --> Knowledge
+    SQLite --> Secrets
+    SQLite --> Stats
+    Knowledge --> Context
+    Context --> MCP
+    SQLite --> UI
+    SQLite --> MCP
+    SQLite --> Export
 ```
 
 ## Quick start
 
 ```bash
-# Clone and start all services
 git clone https://github.com/Saturate/HUSK.git
-cd HUSK
-docker compose up -d
-```
+cd HUSK && bun install
 
-This starts HUSK with Qdrant and Ollama via Docker and auto-pulls the embedding model on first run. See [Components](#components) for alternatives.
+# Fully local, no Docker, no external services:
+HUSK_EMBEDDINGS=transformers HUSK_STORAGE=sqlite-vec bun run server/src/index.ts
+```
 
 Open `http://localhost:3000/setup` to create your admin account.
 
-### Create an API key
-
-1. Log in at `http://localhost:3000`
-2. Go to **API Keys** → **Create Key**
-3. Copy the key (`husk_...`) - you won't see it again
-
 ### Connect Claude Code
 
-**Option A: MCP config** (recommended)
+HUSK accepts Claude Code's native OTel telemetry. Add to your Claude Code `settings.json`:
 
-Add a `.mcp.json` to your project root (or `~/.claude/.mcp.json` for global access):
+```json
+{
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:3000",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf"
+  }
+}
+```
+
+Or route through Grafana Alloy for fan-out to multiple backends (HUSK + Grafana + Datadog + whatever speaks OTLP).
+
+For MCP tools (search memories, query traces, compress sessions), add to `.mcp.json`:
 
 ```json
 {
@@ -59,139 +93,70 @@ Add a `.mcp.json` to your project root (or `~/.claude/.mcp.json` for global acce
     "husk": {
       "type": "http",
       "url": "http://localhost:3000/mcp",
-      "headers": {
-        "Authorization": "Bearer husk_your-api-key-here"
-      }
+      "headers": { "Authorization": "Bearer husk_your-key" }
     }
   }
 }
 ```
 
-Restart Claude Code and the MCP tools (`search`, `remember`, `list_projects`, `session_context`, `get_session_detail`) are available immediately.
+## What you get
 
-**Option B: Plugin** (includes session-end hooks and skills)
+**Dashboard** with cost cards, daily spend chart, project breakdown, model comparison.
 
-```bash
-claude plugin add /path/to/HUSK/plugins/claude-code
-```
+**Session tracing** with filterable trace list and a span detail viewer showing every turn, tool call, and subagent in a session.
 
-Set `HUSK_URL` and `HUSK_KEY` environment variables to your server URL and API key.
+**Model analytics** comparing token output per turn, cost per turn, and cache hit rates across model families. (Opus 4.8 outputs 3x more tokens per turn than 4.6. The data makes this visible.)
 
-## How it works
+**Secret scanning** powered by trufflehog. Scans trace data for leaked credentials that were exposed to the model provider through tool calls. Found real verified Storyblok and AbuseIPDB key leaks in historical sessions.
 
-The server is **client-agnostic**. `/ingest` is a universal write endpoint - any tool that can run a shell script or make an HTTP call can send memories. The plugin decides how it captures and retrieves, the server just stores.
+**Knowledge derivation** from telemetry. Sessions get compressed into structured summaries (what was asked, what was done, what was learned, what's next) and stored as searchable memories.
 
-## Memory scopes
+**MCP tools** the agent can use mid-session: `cost_summary`, `tool_stats`, `get_trace_summary`, `get_trace_spans`, `compress_trace`, `scan_secrets`, `project_insights`.
 
-| Scope       | What                        | Example                                                                              |
-| ----------- | --------------------------- | ------------------------------------------------------------------------------------ |
-| `session`   | Single coding session       | "Migrated Stripe v2 to v3 - checkout and billing done, webhooks still need updating" |
-| `project`   | Per-repo knowledge          | "Legacy API returns dates as DD/MM/YYYY, not ISO 8601 - parse with dayjs.utc()"     |
-| `workspace` | Shared across related repos | "All client-a repos use Postgres 15 with RLS policies"                               |
-| `global`    | Cross-project patterns      | "Always use bun, not npm. Prefers biome over eslint+prettier"                        |
+## Architecture
 
-Projects are keyed by **git remote URL** - works across machines regardless of where the repo is checked out. Workspaces group related projects so memories can be shared across repos in the same organization or client.
+Everything is pluggable via a provider pattern:
+
+| Layer | Options |
+|---|---|
+| **Telemetry storage** | SQLite (default), PostgreSQL |
+| **Telemetry source** | OTLP receiver, custom API, legacy hooks |
+| **Embeddings** | Ollama, Transformers.js (local), OpenAI, Voyage, llama.cpp |
+| **Vector store** | Qdrant, SQLite-vec (local) |
+| **Compression** | Anthropic, OpenRouter, Ollama |
+| **Graph** | SQLite, Neo4j |
+| **OTLP export** | Optional dual-write to any OTLP backend |
+
+Three deployment modes:
+
+**Standalone** (local SQLite, zero config) - install, run, point Claude Code at it.
+
+**Fan-out target** (behind Alloy) - HUSK is one OTLP destination alongside Grafana, Datadog, whatever.
+
+**Grafana-backed** (future) - HUSK reads traces from Tempo, owns only the knowledge layer.
 
 ## Configuration
 
-Configure via environment variables, a `husk.toml` file, or both. Env vars always take priority over TOML. See `.env.example` and `server/husk.toml.example` for all options.
+Environment variables or `husk.toml`. Env vars take priority.
 
-| Variable             | Default                  | Description                          |
-| -------------------- | ------------------------ | ------------------------------------ |
-| `HUSK_PORT`          | `3000`                   | Server port                          |
-| `HUSK_DB_PATH`       | `data/husk.db`           | SQLite database path                 |
-| `HUSK_JWT_SECRET`    | auto-generated           | JWT signing secret                   |
-| `HUSK_STORAGE`       | `qdrant`                 | Storage backend (`qdrant`, `sqlite-vec`) |
-| `HUSK_STORAGE_URL`   | `http://localhost:6333`  | Qdrant server URL                    |
-| `HUSK_EMBEDDINGS`    | `ollama`                 | Embedding backend (`ollama`, `transformers`, `voyage`, `openai`, `llamacpp`) |
-| `HUSK_EMBED_URL`     | per-provider default     | Embedding provider endpoint          |
-| `HUSK_EMBED_MODEL`   | per-provider default     | Embedding model name                 |
-| `HUSK_EMBED_API_KEY` | —                        | API key (required for voyage, openai) |
-
-## Deployment
-
-Cookies are only marked `Secure` when `NODE_ENV=production`, so **localhost works out of the box** - no HTTPS needed for local use.
-
-For remote/public deployments, create a `docker-compose.prod.yml`:
-
-```yaml
-services:
-  husk:
-    image: ghcr.io/saturate/husk:latest
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./data/husk:/data
-    environment:
-      - NODE_ENV=production
-      - HUSK_DB_PATH=/data/husk.db
-      - HUSK_JWT_SECRET=change-me-to-a-random-string
-      - HUSK_STORAGE_URL=http://qdrant:6333
-      - HUSK_EMBED_URL=http://ollama:11434
-    depends_on:
-      qdrant:
-        condition: service_started
-      ollama:
-        condition: service_healthy
-    restart: unless-stopped
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    volumes:
-      - ./data/qdrant:/qdrant/storage
-    restart: unless-stopped
-
-  ollama:
-    image: ollama/ollama:latest
-    volumes:
-      - ./data/ollama:/root/.ollama
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 5s
-      timeout: 3s
-      start_period: 5s
-
-  ollama-pull:
-    image: curlimages/curl:latest
-    depends_on:
-      ollama:
-        condition: service_healthy
-    restart: "no"
-    entrypoint: >
-      sh -c "curl -fSL http://ollama:11434/api/pull
-      -d '{\"name\":\"nomic-embed-text\",\"stream\":false}'"
-
-```
-
-Put it behind a reverse proxy for HTTPS. Minimal Caddy example:
-
-```
-husk.example.com {
-    reverse_proxy localhost:3000
-}
-```
-
-**Backups:** The SQLite database at `HUSK_DB_PATH` is the only stateful file. Back it up regularly. Qdrant data can be rebuilt by re-ingesting.
+| Variable | Default | What it does |
+|---|---|---|
+| `HUSK_TELEMETRY` | `sqlite` | Telemetry backend (`sqlite`, `postgres`, `otlp`) |
+| `HUSK_TELEMETRY_URL` | - | PostgreSQL connection string |
+| `HUSK_OTLP_AUTH` | `true` | Set `false` for local-only OTLP without auth |
+| `HUSK_STORAGE` | `qdrant` | Vector backend (`qdrant`, `sqlite-vec`) |
+| `HUSK_EMBEDDINGS` | `ollama` | Embedding backend (`ollama`, `transformers`, `openai`, `voyage`) |
+| `HUSK_COMPRESSION_MODE` | `client` | `client` (agent compresses) or `server` (auto) |
+| `HUSK_PORT` | `3000` | Server port |
 
 ## Development
 
 ```bash
-# Start Qdrant + Ollama, or skip Docker with local-only backends (see Components)
-docker compose -f docker-compose.dev.yml up -d
-
-# Install deps
 bun install
-cd server/ui && bun install && cd ../..
-
-# Run server with hot reload
-cd server && bun run dev
-
-# Run tests
-cd server && bun test
-
-# Lint + format
-cd server && bun run check
+cd server && bun run dev     # hot reload
+cd server && bun test        # 312 tests
+cd server && bun run check   # lint + format
+cd server && bun run build:ui  # rebuild frontend
 ```
 
 ## License

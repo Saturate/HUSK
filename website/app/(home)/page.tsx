@@ -13,12 +13,12 @@ export default function HomePage() {
 					HUSK
 				</h1>
 				<p className="mb-2 text-lg text-fd-muted-foreground sm:text-xl">
-					Helpful Universal Storage for Knowledge
+					Observability meets context engineering
 				</p>
 				<p className="mx-auto mb-8 max-w-lg text-fd-muted-foreground">
-					Self-hosted memory layer for AI coding assistants. Captures what you
-					work on, remembers cross-project patterns, and surfaces relevant
-					context — across all your machines and tools.
+					Monitor what your AI agents actually do. Extract knowledge from
+					sessions. Track model behavior, tool usage, and leaked secrets.
+					Speaks OTel natively. Self-hosted.
 				</p>
 
 				<div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3">
