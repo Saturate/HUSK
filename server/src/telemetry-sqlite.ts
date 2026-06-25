@@ -281,7 +281,8 @@ export class SqliteTelemetryProvider implements TelemetryProvider {
 					COALESCE(project, '(unknown)') as project,
 					SUM(total_cost_usd) as total_cost_usd,
 					COUNT(*) as session_count,
-					SUM(total_turns) as total_turns
+					SUM(total_turns) as total_turns,
+					MAX(started_at) as last_active
 				 FROM traces
 				 ${where}
 				 GROUP BY project

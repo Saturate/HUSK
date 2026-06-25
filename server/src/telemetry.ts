@@ -145,6 +145,7 @@ export interface ProjectCost {
 	total_cost_usd: number;
 	session_count: number;
 	total_turns: number;
+	last_active: string | null;
 }
 
 export interface ModelCost {
