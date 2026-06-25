@@ -200,6 +200,27 @@ export function initDb(path?: string): Database {
 	}
 	db.run("CREATE INDEX IF NOT EXISTS idx_memories_workspace ON memories(workspace_id)");
 
+	// Migration: add structured memory columns (title, slug, memory_type, path, updated_at, deleted_at)
+	const memColNames = new Set(memCols.map((c) => c.name));
+	if (!memColNames.has("title")) {
+		db.run("ALTER TABLE memories ADD COLUMN title TEXT");
+		db.run("ALTER TABLE memories ADD COLUMN slug TEXT");
+		db.run("ALTER TABLE memories ADD COLUMN memory_type TEXT");
+		db.run("ALTER TABLE memories ADD COLUMN path TEXT");
+		db.run("ALTER TABLE memories ADD COLUMN updated_at TEXT");
+		db.run("ALTER TABLE memories ADD COLUMN deleted_at TEXT");
+	}
+	db.run(
+		"CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_slug ON memories(scope, git_remote, slug) WHERE slug IS NOT NULL AND deleted_at IS NULL",
+	);
+	db.run(
+		"CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(memory_type) WHERE memory_type IS NOT NULL",
+	);
+	db.run(
+		"CREATE INDEX IF NOT EXISTS idx_memories_deleted ON memories(deleted_at) WHERE deleted_at IS NOT NULL",
+	);
+	db.run("CREATE INDEX IF NOT EXISTS idx_memories_path ON memories(path) WHERE path IS NOT NULL");
+
 	db.run(`
 		CREATE TABLE IF NOT EXISTS user_settings (
 			user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

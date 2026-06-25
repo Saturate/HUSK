@@ -6,8 +6,12 @@ import {
 	getMemoryForUser,
 	getWorkspaceForProject,
 	listDistinctGitRemotes,
+	listDistinctMemoryTypes,
+	listDistinctPaths,
 	listDistinctScopes,
 	listMemories,
+	restoreMemory,
+	softDeleteMemory,
 } from "./db-memories.js";
 import {
 	type ObservationRow,
@@ -35,11 +39,14 @@ export class UserScope {
 		scope?: string;
 		limit?: number;
 		offset?: number;
+		memoryType?: string;
+		path?: string;
+		includeDeleted?: boolean;
 	}): MemoryRow[] {
 		return listMemories({ ...opts, userId: this.userId });
 	}
 
-	countMemories(opts?: { gitRemote?: string; scope?: string }): number {
+	countMemories(opts?: { gitRemote?: string; scope?: string; memoryType?: string; path?: string; includeDeleted?: boolean }): number {
 		return countMemories({ ...opts, userId: this.userId });
 	}
 
@@ -49,12 +56,32 @@ export class UserScope {
 		return deleteMemory(id);
 	}
 
+	softDeleteMemory(id: string): boolean {
+		const memory = getMemoryForUser(id, this.userId);
+		if (!memory) return false;
+		return softDeleteMemory(id);
+	}
+
+	restoreMemory(id: string): boolean {
+		const memory = getMemoryForUser(id, this.userId);
+		if (!memory) return false;
+		return restoreMemory(id);
+	}
+
 	listGitRemotes(): string[] {
 		return listDistinctGitRemotes(this.userId);
 	}
 
 	listScopes(): string[] {
 		return listDistinctScopes(this.userId);
+	}
+
+	listMemoryTypes(): string[] {
+		return listDistinctMemoryTypes(this.userId);
+	}
+
+	listPaths(): string[] {
+		return listDistinctPaths(this.userId);
 	}
 
 	// --- Sessions ---
