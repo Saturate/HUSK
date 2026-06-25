@@ -398,11 +398,94 @@ export async function scanRecentTraces(limit = 20): Promise<{
 		scanner: getScanner().name,
 	});
 
+	// Persist findings to cache
+	for (const r of results) {
+		for (const f of r.findings) {
+			db.query(
+				`INSERT OR IGNORE INTO secret_findings (id, trace_id, span_id, secret_type, redacted_match, verified, detector, tool_name, field)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			).run(
+				crypto.randomUUID(),
+				f.trace_id,
+				f.span_id,
+				f.secret_type,
+				f.redacted_match,
+				f.verified ? 1 : 0,
+				f.detector,
+				f.tool_name,
+				f.field,
+			);
+		}
+	}
+
 	return {
 		scanner: getScanner().name,
 		traces_scanned: traces.length,
 		total_findings: totalFindings,
 		traces_with_findings: results.length,
+		results,
+	};
+}
+
+export function getCachedFindings(): {
+	total_findings: number;
+	traces_with_findings: number;
+	last_scan: string | null;
+	results: Array<{
+		trace_id: string;
+		project: string | null;
+		finding_count: number;
+		findings: SecretFinding[];
+	}>;
+} {
+	const db = getDb();
+
+	const rows = db
+		.query<{
+			id: string;
+			trace_id: string;
+			span_id: string;
+			secret_type: string;
+			redacted_match: string;
+			verified: number;
+			detector: string;
+			tool_name: string | null;
+			field: string | null;
+			found_at: string;
+		}, []>("SELECT * FROM secret_findings ORDER BY found_at DESC")
+		.all();
+
+	const lastScan = rows.length > 0 ? rows[0]?.found_at ?? null : null;
+
+	const byTrace = new Map<string, SecretFinding[]>();
+	for (const r of rows) {
+		const list = byTrace.get(r.trace_id) ?? [];
+		list.push({
+			span_id: r.span_id,
+			trace_id: r.trace_id,
+			span_name: "",
+			tool_name: r.tool_name,
+			detector: r.detector,
+			secret_type: r.secret_type,
+			redacted_match: r.redacted_match,
+			verified: r.verified === 1,
+			field: r.field ?? "",
+			started_at: r.found_at,
+		});
+		byTrace.set(r.trace_id, list);
+	}
+
+	const results = Array.from(byTrace.entries()).map(([trace_id, findings]) => {
+		const project = db
+			.query<{ project: string | null }, [string]>("SELECT project FROM traces WHERE trace_id = ?")
+			.get(trace_id)?.project ?? null;
+		return { trace_id, project, finding_count: findings.length, findings };
+	});
+
+	return {
+		total_findings: rows.length,
+		traces_with_findings: byTrace.size,
+		last_scan: lastScan,
 		results,
 	};
 }

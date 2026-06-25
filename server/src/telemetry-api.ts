@@ -2,7 +2,7 @@ import { getLogger } from "@logtape/logtape";
 import { Hono } from "hono";
 import { bearerKeyMiddleware, jwtMiddleware } from "./auth.js";
 import type { AppEnv } from "./env.js";
-import { scanRecentTraces, scanTrace, scanLogFiles } from "./secret-scanner.js";
+import { scanRecentTraces, scanTrace, scanLogFiles, getCachedFindings } from "./secret-scanner.js";
 import { getTelemetryProviderOrNull } from "./telemetry.js";
 import { compressTraceIfReady } from "./trace-compression-listener.js";
 
@@ -291,8 +291,12 @@ queryApi.get("/traces/:traceId", async (c) => {
 	return c.json({ trace, spans });
 });
 
-queryApi.get("/secrets/scan", async (c) => {
-	const limit = c.req.query("limit") ? Number(c.req.query("limit")) : 50;
+queryApi.get("/secrets", async (c) => {
+	return c.json(getCachedFindings());
+});
+
+queryApi.post("/secrets/rescan", async (c) => {
+	const limit = c.req.query("limit") ? Number(c.req.query("limit")) : 100;
 	const results = await scanRecentTraces(limit);
 	return c.json(results);
 });

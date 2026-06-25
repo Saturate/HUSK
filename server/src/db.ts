@@ -337,6 +337,23 @@ export function initDb(path?: string): Database {
 	db.run("CREATE INDEX IF NOT EXISTS idx_metrics_date ON telemetry_metrics(date)");
 	db.run("CREATE INDEX IF NOT EXISTS idx_metrics_project ON telemetry_metrics(project)");
 
+	db.run(`
+		CREATE TABLE IF NOT EXISTS secret_findings (
+			id TEXT PRIMARY KEY,
+			trace_id TEXT NOT NULL,
+			span_id TEXT,
+			secret_type TEXT NOT NULL,
+			redacted_match TEXT NOT NULL,
+			verified INTEGER NOT NULL DEFAULT 0,
+			detector TEXT NOT NULL,
+			tool_name TEXT,
+			field TEXT,
+			found_at TEXT NOT NULL DEFAULT (datetime('now')),
+			UNIQUE(trace_id, secret_type, redacted_match)
+		)
+	`);
+	db.run("CREATE INDEX IF NOT EXISTS idx_secret_findings_trace ON secret_findings(trace_id)");
+
 	// Migration: add enrichment columns to observations
 	const obsCols = db.query<{ name: string }, []>("PRAGMA table_info(observations)").all();
 	const obsColNames = new Set(obsCols.map((c) => c.name));

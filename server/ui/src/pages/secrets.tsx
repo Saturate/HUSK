@@ -9,7 +9,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert } from "lucide-react";
 import { Link } from "react-router";
 
@@ -27,10 +27,11 @@ interface SecretFinding {
 }
 
 interface ScanResult {
-	scanner: string;
-	traces_scanned: number;
+	scanner?: string;
+	traces_scanned?: number;
 	total_findings: number;
 	traces_with_findings: number;
+	last_scan?: string | null;
 	results: Array<{
 		trace_id: string;
 		project: string | null;
@@ -39,53 +40,41 @@ interface ScanResult {
 	}>;
 }
 
-interface LogScanResult {
-	scanner: string;
-	findings: SecretFinding[];
+async function fetchCachedFindings(): Promise<ScanResult> {
+	const res = await fetch("/telemetry/secrets", {
+		credentials: "same-origin",
+		headers: { "Content-Type": "application/json" },
+	});
+	if (res.status === 401) throw new Error("Unauthorized");
+	if (!res.ok) throw new Error("Failed to load findings");
+	return res.json();
 }
 
-async function fetchSecretScan(): Promise<ScanResult> {
-	const [dbRes, logRes] = await Promise.all([
-		fetch("/telemetry/secrets/scan?limit=100", {
-			credentials: "same-origin",
-			headers: { "Content-Type": "application/json" },
-		}),
-		fetch("/telemetry/secrets/scan/logs", {
-			credentials: "same-origin",
-			headers: { "Content-Type": "application/json" },
-		}),
-	]);
-
-	if (dbRes.status === 401) throw new Error("Unauthorized");
-	if (!dbRes.ok) throw new Error("Scan failed");
-
-	const dbData: ScanResult = await dbRes.json();
-	const logData: LogScanResult = logRes.ok ? await logRes.json() : { scanner: "", findings: [] };
-
-	// Add log file findings as a separate "source"
-	if (logData.findings.length > 0) {
-		dbData.results.push({
-			trace_id: "log-files",
-			project: "Local log files (~/.claude/logs/)",
-			finding_count: logData.findings.length,
-			findings: logData.findings,
-		});
-		dbData.total_findings += logData.findings.length;
-		dbData.traces_with_findings += 1;
-	}
-
-	return dbData;
+async function triggerRescan(): Promise<ScanResult> {
+	const res = await fetch("/telemetry/secrets/rescan?limit=100", {
+		method: "POST",
+		credentials: "same-origin",
+		headers: { "Content-Type": "application/json" },
+	});
+	if (!res.ok) throw new Error("Rescan failed");
+	return res.json();
 }
 
 export function SecretsPage() {
-	const scanQuery = useQuery({
-		queryKey: ["secrets", "scan"],
-		queryFn: fetchSecretScan,
-		staleTime: 60_000,
-		refetchInterval: false,
+	const queryClient = useQueryClient();
+	const cachedQuery = useQuery({
+		queryKey: ["secrets", "cached"],
+		queryFn: fetchCachedFindings,
 	});
 
-	const data = scanQuery.data;
+	const rescanMutation = useMutation({
+		mutationFn: triggerRescan,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["secrets", "cached"] });
+		},
+	});
+
+	const data = cachedQuery.data;
 
 	return (
 		<AppLayout>
@@ -93,24 +82,25 @@ export function SecretsPage() {
 				<div>
 					<h2 className="text-2xl font-semibold">Secret Scanning</h2>
 					<p className="text-sm text-muted-foreground">
-						Scans session traces for leaked credentials, API keys, tokens, and passwords.
+						Cached results from trufflehog. Rescan to check for new findings.
+						{data?.last_scan && <span className="ml-2">Last scan: {new Date(data.last_scan).toLocaleString()}</span>}
 					</p>
 				</div>
-				<Button onClick={() => scanQuery.refetch()} disabled={scanQuery.isFetching} variant="outline">
-					{scanQuery.isFetching ? "Scanning..." : "Rescan"}
+				<Button onClick={() => rescanMutation.mutate()} disabled={rescanMutation.isPending} variant="outline">
+					{rescanMutation.isPending ? "Scanning..." : "Rescan"}
 				</Button>
 			</div>
 
-			{scanQuery.isLoading ? (
+			{cachedQuery.isLoading ? (
 				<p className="text-sm text-muted-foreground">Scanning traces...</p>
-			) : scanQuery.isError ? (
+			) : cachedQuery.isError ? (
 				<p className="text-sm text-destructive">Scan failed. Is the server running?</p>
 			) : data ? (
 				<>
 					{/* Summary cards */}
 					<div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">
-						<SummaryCard label="Scanner" value={data.scanner} />
-						<SummaryCard label="Traces scanned" value={String(data.traces_scanned)} />
+						<SummaryCard label="Scanner" value={data.scanner ?? "trufflehog"} />
+						<SummaryCard label="Traces scanned" value={String(data.traces_scanned ?? "-")} />
 						<SummaryCard
 							label="Findings"
 							value={String(data.total_findings)}
