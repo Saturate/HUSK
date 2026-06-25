@@ -1,4 +1,4 @@
-import { type WorkspaceRow, getWorkspaceByName, getWorkspaceForProject } from "./db.js";
+import { type WorkspaceRow, getDb, getWorkspaceByName, getWorkspaceForProject } from "./db.js";
 
 /**
  * Parse an org/group name from a git remote URL.
@@ -38,11 +38,32 @@ export function resolveWorkspace(
 	const explicit = getWorkspaceForProject(gitRemote, opts?.userId);
 	if (explicit) return explicit;
 
-	// Auto-detect: infer org name, match against existing workspaces
+	// Auto-detect: try multiple strategies
 	if (opts?.autoDetect !== false) {
+		// Strategy 1: infer org from git remote URL
 		const inferred = inferWorkspaceFromRemote(gitRemote);
 		if (inferred) {
-			return getWorkspaceByName(inferred, opts?.userId);
+			const ws = getWorkspaceByName(inferred, opts?.userId);
+			if (ws) return ws;
+		}
+
+		// Strategy 2: prefix match on project name (DCC.Frontends -> workspace "DCC")
+		const workspaces = getDb()
+			.query<WorkspaceRow, []>(
+				opts?.userId
+					? `SELECT * FROM workspaces WHERE created_by = '${opts.userId}' ORDER BY length(name) DESC`
+					: "SELECT * FROM workspaces ORDER BY length(name) DESC",
+			)
+			.all();
+
+		for (const ws of workspaces) {
+			if (
+				gitRemote === ws.name ||
+				gitRemote.startsWith(`${ws.name}.`) ||
+				gitRemote.startsWith(`${ws.name}/`)
+			) {
+				return ws;
+			}
 		}
 	}
 
