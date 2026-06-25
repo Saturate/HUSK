@@ -19,7 +19,8 @@ const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
 export function relativeTime(date: string | null): string {
 	if (!date) return "Never";
-	const diff = new Date(date).getTime() - Date.now();
+	const parsed = date.endsWith("Z") || date.includes("+") ? date : `${date}Z`;
+	const diff = new Date(parsed).getTime() - Date.now();
 	for (const [unit, ms] of UNITS) {
 		if (Math.abs(diff) >= ms) {
 			return rtf.format(Math.round(diff / ms), unit);

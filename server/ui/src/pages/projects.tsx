@@ -26,7 +26,8 @@ import { useNavigate } from "react-router";
 
 function timeAgo(iso: string | null): string {
 	if (!iso) return "-";
-	const diff = Date.now() - new Date(iso).getTime();
+	const parsed = iso.endsWith("Z") || iso.includes("+") ? iso : `${iso}Z`;
+	const diff = Date.now() - new Date(parsed).getTime();
 	const mins = Math.floor(diff / 60_000);
 	if (mins < 60) return `${mins}m ago`;
 	const hours = Math.floor(mins / 60);
