@@ -1,4 +1,7 @@
 import { getLogger } from "@logtape/logtape";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { homedir } from "node:os";
 import { getDb } from "./db.js";
 import type { TelemetryProvider } from "./telemetry.js";
 
@@ -64,6 +67,45 @@ function nanoToIso(nano: string | undefined): string | null {
 	}
 }
 
+// Cache: session_id -> project name derived from transcript directory
+const sessionProjectCache = new Map<string, string | null>();
+
+function resolveProjectFromTranscript(sessionId: string): string | null {
+	if (sessionProjectCache.has(sessionId)) return sessionProjectCache.get(sessionId) ?? null;
+
+	const projectsDir = join(homedir(), ".claude", "projects");
+	if (!existsSync(projectsDir)) {
+		sessionProjectCache.set(sessionId, null);
+		return null;
+	}
+
+	try {
+		for (const dirName of readdirSync(projectsDir)) {
+			const transcriptPath = join(projectsDir, dirName, `${sessionId}.jsonl`);
+			if (existsSync(transcriptPath)) {
+				// Decode dir name to project: -Users-alkj-code-github-HUSK -> HUSK
+				const decoded = dirName.replace(/^-/, "").replace(/-/g, "/");
+				const parts = decoded.split("/");
+				const codeIdx = parts.indexOf("code");
+				let projectParts: string[];
+				if (codeIdx >= 0 && codeIdx + 1 < parts.length) {
+					projectParts = parts.slice(codeIdx + 1);
+				} else {
+					projectParts = [parts[parts.length - 1] ?? dirName];
+				}
+				// Skip common parent dirs that aren't the project name (github, code)
+				if (projectParts[0] === "github" && projectParts.length > 1) projectParts = projectParts.slice(1);
+				const project = projectParts[projectParts.length - 1] ?? dirName;
+				sessionProjectCache.set(sessionId, project);
+				return project;
+			}
+		}
+	} catch { /* best effort */ }
+
+	sessionProjectCache.set(sessionId, null);
+	return null;
+}
+
 function getApiKeyId(): string {
 	const row = getDb()
 		.query<{ id: string }, []>("SELECT id FROM api_keys WHERE is_active = 1 LIMIT 1")
@@ -110,9 +152,11 @@ export async function processLogRecords(
 			const existing = await provider.getTrace(traceId);
 			if (!existing) {
 				try {
+					const project = resolveProjectFromTranscript(sessionId);
 					await provider.startTrace({
 						traceId,
 						apiKeyId,
+						project,
 						model: (attrs.model as string) ?? null,
 						startedAt: timestamp,
 					});
