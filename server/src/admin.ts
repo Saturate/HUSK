@@ -4,6 +4,7 @@ import { jwtMiddleware } from "./auth.js";
 import { parseSummary, setCompressionProvider } from "./compression.js";
 import {
 	UserScope,
+	getDb,
 	assignProjectToWorkspace,
 	countMemories,
 	countObservations,
@@ -76,7 +77,15 @@ admin.get("/stats", (c) => {
 admin.get("/filters", (c) => {
 	const isAdmin = c.get("role") === "admin";
 	const userId = isAdmin ? undefined : c.get("userId");
-	const projects = listDistinctGitRemotes(userId);
+	const memoryProjects = listDistinctGitRemotes(userId);
+	// Also include projects from telemetry traces
+	const traceProjects = getDb()
+		.query<{ project: string }, []>(
+			"SELECT DISTINCT project FROM traces WHERE project IS NOT NULL AND project != '' ORDER BY project",
+		)
+		.all()
+		.map((r) => r.project);
+	const projects = [...new Set([...memoryProjects, ...traceProjects])].sort();
 	const scopes = listDistinctScopes(userId);
 	const types = listDistinctMemoryTypes(userId);
 	const paths = listDistinctPaths(userId);
