@@ -50,8 +50,8 @@ async function fetchCachedFindings(): Promise<ScanResult> {
 	return res.json();
 }
 
-async function triggerRescan(): Promise<ScanResult> {
-	const res = await fetch("/telemetry/secrets/rescan?limit=100", {
+async function triggerRescan(limit: number): Promise<ScanResult> {
+	const res = await fetch(`/telemetry/secrets/rescan?limit=${limit}`, {
 		method: "POST",
 		credentials: "same-origin",
 		headers: { "Content-Type": "application/json" },
@@ -86,9 +86,15 @@ export function SecretsPage() {
 						{data?.last_scan && <span className="ml-2">Last scan: {new Date(data.last_scan).toLocaleString()}</span>}
 					</p>
 				</div>
-				<Button onClick={() => rescanMutation.mutate()} disabled={rescanMutation.isPending} variant="outline">
-					{rescanMutation.isPending ? "Scanning..." : "Rescan"}
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button onClick={() => rescanMutation.mutate(50)} disabled={rescanMutation.isPending} variant="outline" size="sm">
+						Quick scan
+					</Button>
+					<Button onClick={() => rescanMutation.mutate(9999)} disabled={rescanMutation.isPending} variant="outline" size="sm">
+						Full scan
+					</Button>
+					{rescanMutation.isPending && <span className="text-xs text-muted-foreground">Scanning...</span>}
+				</div>
 			</div>
 
 			{cachedQuery.isLoading ? (
