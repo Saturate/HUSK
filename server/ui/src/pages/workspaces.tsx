@@ -15,13 +15,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import {
 	Table,
 	TableBody,
 	TableCell,
@@ -256,18 +249,27 @@ export function WorkspacesPage() {
 																</DialogHeader>
 																<div className="space-y-2">
 																	<Label>Project</Label>
-																	<Select value={assignRemote} onValueChange={setAssignRemote}>
-																		<SelectTrigger>
-																			<SelectValue placeholder="Select a project" />
-																		</SelectTrigger>
-																		<SelectContent>
-																			{projects.map((p) => (
-																				<SelectItem key={p} value={p}>
-																					{p}
-																				</SelectItem>
-																			))}
-																		</SelectContent>
-																	</Select>
+																	<Input
+																		placeholder="Search projects..."
+																		value={assignRemote}
+																		onChange={(e) => setAssignRemote(e.target.value)}
+																	/>
+																	{assignRemote && (
+																		<div className="max-h-40 overflow-y-auto rounded-md border">
+																			{projects
+																				.filter((p) => p.toLowerCase().includes(assignRemote.toLowerCase()))
+																				.map((p) => (
+																					<button
+																						key={p}
+																						type="button"
+																						className={`w-full px-3 py-1.5 text-left text-sm hover:bg-accent ${p === assignRemote ? "bg-accent font-medium" : ""}`}
+																						onClick={() => setAssignRemote(p)}
+																					>
+																						{p}
+																					</button>
+																				))}
+																		</div>
+																	)}
 																</div>
 																<DialogFooter>
 																	<DialogClose asChild>
