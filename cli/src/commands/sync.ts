@@ -78,6 +78,16 @@ function discoverClaudeMemories(): MemoryFile[] {
 	return memories;
 }
 
+function memoryTypeFromClaude(type: string): string {
+	const map: Record<string, string> = {
+		user: "fact",
+		feedback: "lesson",
+		project: "fact",
+		reference: "fact",
+	};
+	return map[type] ?? "fact";
+}
+
 function scopeFromType(type: string): "session" | "project" | "global" {
 	if (type === "user" || type === "feedback") return "global";
 	if (type === "reference") return "global";
@@ -86,7 +96,7 @@ function scopeFromType(type: string): "session" | "project" | "global" {
 
 export async function syncCommand() {
 	banner();
-	p.intro("Sync memories to HUSK");
+	p.intro("Sync Claude Code memories to HUSK");
 
 	const creds = readCredentials();
 	if (!creds) {
@@ -94,11 +104,10 @@ export async function syncCommand() {
 		process.exit(1);
 	}
 
-	// Check server health
 	try {
 		const res = await fetch(`${creds.url}/health`);
 		if (!res.ok) throw new Error(`HTTP ${res.status}`);
-	} catch (err) {
+	} catch {
 		p.log.error(`Cannot reach HUSK at ${creds.url}`);
 		process.exit(1);
 	}
@@ -111,13 +120,14 @@ export async function syncCommand() {
 		return;
 	}
 
-	p.log.info(`Found ${memories.length} Claude Code memories`);
+	p.log.info(`Found ${memories.length} Claude Code memories across ${new Set(memories.map((m) => m.project)).size} projects`);
+
+	let imported = 0;
+	let duplicates = 0;
+	let errors = 0;
 
 	for (const mem of memories) {
 		const scope = scopeFromType(mem.type);
-		const summary = mem.description
-			? `${mem.name}: ${mem.description}`
-			: mem.content.slice(0, 200);
 
 		try {
 			const res = await fetch(`${creds.url}/ingest`, {
@@ -127,28 +137,38 @@ export async function syncCommand() {
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					summary: `${summary}\n\n${mem.content}`,
+					summary: mem.content,
 					scope,
-					git_remote: null,
+					git_remote: mem.project,
+					title: mem.description || mem.name,
+					memory_type: memoryTypeFromClaude(mem.type),
 					metadata: {
-						source: "claude-code",
-						memory_type: mem.type,
-						memory_name: mem.name,
-						project: mem.project,
+						source: "claude_code_sync",
+						claude_name: mem.name,
+						claude_type: mem.type,
 					},
 				}),
 			});
 
 			if (res.ok) {
-				p.log.success(`${mem.name} (${scope}${mem.project ? ` · ${mem.project}` : ""})`);
+				const data = (await res.json()) as { duplicate?: boolean; id?: string };
+				if (data.duplicate) {
+					duplicates++;
+					p.log.warn(`${mem.name} (duplicate)`);
+				} else {
+					imported++;
+					p.log.success(`${mem.name} (${scope}${mem.project ? ` · ${mem.project}` : ""})`);
+				}
 			} else {
+				errors++;
 				const err = (await res.json()) as { error?: string };
 				p.log.error(`${mem.name}: ${err.error ?? res.statusText}`);
 			}
 		} catch (err) {
+			errors++;
 			p.log.error(`${mem.name}: ${err instanceof Error ? err.message : "failed"}`);
 		}
 	}
 
-	p.outro(`Synced ${memories.length} memories to HUSK`);
+	p.outro(`Done: ${imported} imported, ${duplicates} duplicates, ${errors} errors`);
 }

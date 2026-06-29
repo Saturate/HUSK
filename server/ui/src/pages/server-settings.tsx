@@ -1,6 +1,5 @@
 import { api } from "@/api";
 import { AppLayout } from "@/components/layout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -20,7 +19,6 @@ export function ServerSettingsPage() {
 		<AppLayout>
 			<h2 className="mb-6 text-2xl font-semibold">Server Settings</h2>
 			<CompressionSettings />
-			<ClaudeCodeImport />
 			<RetentionSettings />
 			<PrivacySettings />
 		</AppLayout>
@@ -230,100 +228,6 @@ function CompressionSettings() {
 					)}
 				</CardContent>
 			</Card>
-		</section>
-	);
-}
-
-function ClaudeCodeImport() {
-	const queryClient = useQueryClient();
-
-	const discoverQuery = useQuery({
-		queryKey: ["claude-discover"],
-		queryFn: () => api.discoverClaudeMemories(),
-	});
-
-	const backfillMutation = useMutation({
-		mutationFn: ({ path, gitRemote }: { path: string; gitRemote?: string }) =>
-			api.backfillClaudeMemories(path, gitRemote),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["knowledge"] });
-			queryClient.invalidateQueries({ queryKey: ["memories"] });
-		},
-	});
-
-	const projects = discoverQuery.data?.projects ?? [];
-	const lastResult = backfillMutation.data;
-
-	return (
-		<section className="mt-8">
-			<h3 className="mb-4 text-lg font-medium">Claude Code Import</h3>
-			<p className="mb-4 text-sm text-muted-foreground">
-				Import memories from Claude Code's local storage into HUSK. Scans{" "}
-				<code className="rounded bg-muted px-1 py-0.5 text-xs">~/.claude/projects/</code> for memory
-				files.
-			</p>
-
-			{discoverQuery.isLoading ? (
-				<p className="text-sm text-muted-foreground">Scanning...</p>
-			) : projects.length === 0 ? (
-				<Card>
-					<CardContent className="py-6 text-center text-sm text-muted-foreground">
-						No Claude Code memory directories found.
-					</CardContent>
-				</Card>
-			) : (
-				<div className="space-y-2">
-					{projects.map((project) => (
-						<Card key={project.path}>
-							<CardContent className="flex items-center justify-between py-3">
-								<div className="min-w-0 flex-1">
-									<span className="text-sm font-medium truncate block">{project.name}</span>
-									<span className="text-xs text-muted-foreground">
-										{project.memory_count} {project.memory_count === 1 ? "memory" : "memories"}
-									</span>
-								</div>
-								<Button
-									size="sm"
-									variant="outline"
-									disabled={backfillMutation.isPending}
-									onClick={() => backfillMutation.mutate({ path: project.path })}
-								>
-									{backfillMutation.isPending ? "Importing..." : "Import"}
-								</Button>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			)}
-
-			{lastResult && (
-				<Card className="mt-4">
-					<CardContent className="py-4">
-						<div className="flex items-center gap-3 text-sm">
-							<Badge
-								variant="secondary"
-								className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-							>
-								{lastResult.imported} imported
-							</Badge>
-							{lastResult.duplicates > 0 && (
-								<Badge variant="secondary">{lastResult.duplicates} duplicates</Badge>
-							)}
-							{lastResult.errors > 0 && (
-								<Badge
-									variant="secondary"
-									className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
-								>
-									{lastResult.errors} errors
-								</Badge>
-							)}
-							{lastResult.skipped > 0 && (
-								<Badge variant="secondary">{lastResult.skipped} skipped</Badge>
-							)}
-						</div>
-					</CardContent>
-				</Card>
-			)}
 		</section>
 	);
 }
