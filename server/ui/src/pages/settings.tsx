@@ -26,12 +26,15 @@ export function SettingsPage() {
 		<AppLayout>
 			<h2 className="mb-6 text-2xl font-semibold">Settings</h2>
 
-			<section>
+			{isAdmin && <SessionCaptureSettings />}
+
+			<HooksConfigSection />
+
+			<section className="mt-8">
 				<h3 className="mb-4 text-lg font-medium">Theme</h3>
 				<div className="grid gap-4 sm:grid-cols-2">
 					{themes.map((t) => {
 						const active = t.id === current.id;
-						// Preview colors from the dark variant
 						const bg = t.dark.background;
 						const card = t.dark.card;
 						const fg = t.dark.foreground;
@@ -64,78 +67,24 @@ export function SettingsPage() {
 									<p className="text-sm text-muted-foreground">{t.description}</p>
 								</CardHeader>
 								<CardContent>
-									{/* Mini preview */}
 									<div
 										className="overflow-hidden rounded-md border"
-										style={{
-											backgroundColor: bg,
-											borderColor: border,
-										}}
+										style={{ backgroundColor: bg, borderColor: border }}
 									>
-										{/* Nav bar */}
 										<div
 											className="flex items-center gap-3 px-3 py-2"
-											style={{
-												borderBottom: `1px solid ${border}`,
-											}}
+											style={{ borderBottom: `1px solid ${border}` }}
 										>
-											<span
-												className="text-xs font-semibold"
-												style={{
-													color: fg,
-													fontFamily: t.dark["font-sans"],
-												}}
-											>
-												HUSK
-											</span>
-											<span
-												className="rounded px-1.5 py-0.5 text-[10px]"
-												style={{
-													backgroundColor: accent,
-													color: fg,
-												}}
-											>
-												Dashboard
-											</span>
+											<span className="text-xs font-semibold" style={{ color: fg, fontFamily: t.dark["font-sans"] }}>HUSK</span>
+											<span className="rounded px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: accent, color: fg }}>Dashboard</span>
 										</div>
-										{/* Content area */}
 										<div className="flex gap-2 p-3">
-											{/* Stat card */}
-											<div
-												className="flex-1 rounded px-2 py-1.5"
-												style={{
-													backgroundColor: card,
-													border: `1px solid ${border}`,
-												}}
-											>
-												<span className="block text-[9px]" style={{ color: muted }}>
-													Memories
-												</span>
-												<span
-													className="text-sm font-bold"
-													style={{
-														color: fg,
-														fontFamily: t.dark["font-sans"],
-													}}
-												>
-													16
-												</span>
+											<div className="flex-1 rounded px-2 py-1.5" style={{ backgroundColor: card, border: `1px solid ${border}` }}>
+												<span className="block text-[9px]" style={{ color: muted }}>Memories</span>
+												<span className="text-sm font-bold" style={{ color: fg, fontFamily: t.dark["font-sans"] }}>16</span>
 											</div>
-											{/* Button preview */}
-											<div
-												className="flex-1 rounded px-2 py-1.5"
-												style={{
-													backgroundColor: primary,
-												}}
-											>
-												<span
-													className="block text-[9px]"
-													style={{
-														color: t.dark["primary-foreground"],
-													}}
-												>
-													Primary
-												</span>
+											<div className="flex-1 rounded px-2 py-1.5" style={{ backgroundColor: primary }}>
+												<span className="block text-[9px]" style={{ color: t.dark["primary-foreground"] }}>Primary</span>
 											</div>
 										</div>
 									</div>
@@ -145,10 +94,6 @@ export function SettingsPage() {
 					})}
 				</div>
 			</section>
-
-			{isAdmin && <SessionCaptureSettings />}
-
-			<HooksConfigSection />
 		</AppLayout>
 	);
 }
@@ -222,95 +167,104 @@ function SessionCaptureSettings() {
 						</p>
 					</div>
 
-					<div className="space-y-1">
-						<Label htmlFor="compression-provider">Compression Provider</Label>
-						<Select
-							value={settings.compression_provider ?? "anthropic"}
-							onValueChange={(v) => handleUpdate("compression_provider", v)}
-						>
-							<SelectTrigger id="compression-provider" className="w-48">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="anthropic">Anthropic</SelectItem>
-								<SelectItem value="openrouter">OpenRouter</SelectItem>
-								<SelectItem value="ollama">Ollama</SelectItem>
-							</SelectContent>
-						</Select>
-					</div>
+					{(settings.compression_mode ?? "client") === "server" && (
+						<>
+							<div className="space-y-1">
+								<Label htmlFor="compression-provider">Compression Provider</Label>
+								<Select
+									value={settings.compression_provider ?? "anthropic"}
+									onValueChange={(v) => handleUpdate("compression_provider", v)}
+								>
+									<SelectTrigger id="compression-provider" className="w-48">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="anthropic">Anthropic</SelectItem>
+										<SelectItem value="openrouter">OpenRouter</SelectItem>
+										<SelectItem value="ollama">Ollama</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
 
-					<div className="space-y-1">
-						<Label htmlFor="compression-model">Model</Label>
-						<div className="flex gap-2">
-							<Input
-								id="compression-model"
-								className="w-72"
-								placeholder={settings.compression_model ?? "claude-haiku-4-5-20251001"}
-								value={compressionModel}
-								onChange={(e) => setCompressionModel(e.target.value)}
-							/>
-							<Button
-								size="sm"
-								variant="outline"
-								disabled={!compressionModel.trim()}
-								onClick={() => {
-									handleUpdate("compression_model", compressionModel.trim());
-									setCompressionModel("");
-								}}
-							>
-								Save
-							</Button>
-						</div>
-					</div>
+							<div className="space-y-1">
+								<Label htmlFor="compression-model">Model</Label>
+								<div className="flex gap-2">
+									<Input
+										id="compression-model"
+										className="w-72"
+										placeholder={settings.compression_model ?? "claude-haiku-4-5-20251001"}
+										value={compressionModel}
+										onChange={(e) => setCompressionModel(e.target.value)}
+									/>
+									<Button
+										size="sm"
+										variant="outline"
+										disabled={!compressionModel.trim()}
+										onClick={() => {
+											handleUpdate("compression_model", compressionModel.trim());
+											setCompressionModel("");
+										}}
+									>
+										Save
+									</Button>
+								</div>
+							</div>
 
-					<div className="space-y-1">
-						<Label htmlFor="compression-api-key">API Key (for Anthropic/OpenRouter)</Label>
-						<div className="flex gap-2">
-							<Input
-								id="compression-api-key"
-								type="password"
-								className="w-72"
-								placeholder={settings.compression_api_key ? "****" : "Not set"}
-								value={compressionApiKey}
-								onChange={(e) => setCompressionApiKey(e.target.value)}
-							/>
-							<Button
-								size="sm"
-								variant="outline"
-								disabled={!compressionApiKey.trim()}
-								onClick={() => {
-									handleUpdate("compression_api_key", compressionApiKey.trim());
-									setCompressionApiKey("");
-								}}
-							>
-								Save
-							</Button>
-						</div>
-					</div>
+							<div className="space-y-1">
+								<Label htmlFor="compression-api-key">
+									API Key {(settings.compression_provider ?? "anthropic") === "ollama" ? "(not needed)" : `(for ${settings.compression_provider ?? "Anthropic"})`}
+								</Label>
+								<div className="flex gap-2">
+									<Input
+										id="compression-api-key"
+										type="password"
+										className="w-72"
+										placeholder={settings.compression_api_key ? "****" : "Not set"}
+										value={compressionApiKey}
+										onChange={(e) => setCompressionApiKey(e.target.value)}
+										disabled={(settings.compression_provider ?? "anthropic") === "ollama"}
+									/>
+									<Button
+										size="sm"
+										variant="outline"
+										disabled={!compressionApiKey.trim()}
+										onClick={() => {
+											handleUpdate("compression_api_key", compressionApiKey.trim());
+											setCompressionApiKey("");
+										}}
+									>
+										Save
+									</Button>
+								</div>
+							</div>
 
-					<div className="space-y-1">
-						<Label htmlFor="compression-base-url">Base URL (for OpenRouter)</Label>
-						<div className="flex gap-2">
-							<Input
-								id="compression-base-url"
-								className="w-72"
-								placeholder={settings.compression_base_url ?? "https://openrouter.ai/api/v1"}
-								value={compressionBaseUrl}
-								onChange={(e) => setCompressionBaseUrl(e.target.value)}
-							/>
-							<Button
-								size="sm"
-								variant="outline"
-								disabled={!compressionBaseUrl.trim()}
-								onClick={() => {
-									handleUpdate("compression_base_url", compressionBaseUrl.trim());
-									setCompressionBaseUrl("");
-								}}
-							>
-								Save
-							</Button>
-						</div>
-					</div>
+							{(settings.compression_provider === "openrouter") && (
+								<div className="space-y-1">
+									<Label htmlFor="compression-base-url">Base URL</Label>
+									<div className="flex gap-2">
+										<Input
+											id="compression-base-url"
+											className="w-72"
+											placeholder={settings.compression_base_url ?? "https://openrouter.ai/api/v1"}
+											value={compressionBaseUrl}
+											onChange={(e) => setCompressionBaseUrl(e.target.value)}
+										/>
+										<Button
+											size="sm"
+											variant="outline"
+											disabled={!compressionBaseUrl.trim()}
+											onClick={() => {
+												handleUpdate("compression_base_url", compressionBaseUrl.trim());
+												setCompressionBaseUrl("");
+											}}
+										>
+											Save
+										</Button>
+									</div>
+								</div>
+							)}
+						</>
+					)}
 				</CardContent>
 			</Card>
 		</section>
