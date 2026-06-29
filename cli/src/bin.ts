@@ -44,6 +44,9 @@ Options:
   --help, -h     Show this help
   --version, -v  Show version
 
+Sync options:
+  --dry-run      List memories that would be synced without importing
+
 Logs options:
   --follow, -f   Follow log output (like tail -f)
   --lines, -n    Number of lines to show (default: 50)
@@ -76,7 +79,7 @@ async function main() {
 				await configCommand();
 				break;
 			case "sync":
-				await syncCommand();
+				await syncCommand({ dryRun: hasFlag("dry-run") });
 				break;
 			case "stop":
 				await stopCommand();

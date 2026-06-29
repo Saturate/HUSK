@@ -94,9 +94,32 @@ function scopeFromType(type: string): "session" | "project" | "global" {
 	return "project";
 }
 
-export async function syncCommand() {
+export async function syncCommand(opts?: { dryRun?: boolean }) {
+	const dryRun = opts?.dryRun ?? false;
+
 	banner();
-	p.intro("Sync Claude Code memories to HUSK");
+	p.intro(dryRun ? "Sync (dry run)" : "Sync Claude Code memories to HUSK");
+
+	const memories = discoverClaudeMemories();
+
+	if (memories.length === 0) {
+		p.log.info("No Claude Code memories found to sync.");
+		p.outro("");
+		return;
+	}
+
+	const projects = new Set(memories.map((m) => m.project).filter(Boolean));
+	p.log.info(`Found ${memories.length} memories across ${projects.size} projects`);
+
+	if (dryRun) {
+		for (const mem of memories) {
+			const scope = scopeFromType(mem.type);
+			const type = memoryTypeFromClaude(mem.type);
+			p.log.info(`[${type}] ${mem.name} (${scope}${mem.project ? ` · ${mem.project}` : ""}) — ${mem.content.length} chars`);
+		}
+		p.outro(`Dry run: ${memories.length} memories would be synced`);
+		return;
+	}
 
 	const creds = readCredentials();
 	if (!creds) {
@@ -111,16 +134,6 @@ export async function syncCommand() {
 		p.log.error(`Cannot reach HUSK at ${creds.url}`);
 		process.exit(1);
 	}
-
-	const memories = discoverClaudeMemories();
-
-	if (memories.length === 0) {
-		p.log.info("No Claude Code memories found to sync.");
-		p.outro("");
-		return;
-	}
-
-	p.log.info(`Found ${memories.length} Claude Code memories across ${new Set(memories.map((m) => m.project)).size} projects`);
 
 	let imported = 0;
 	let duplicates = 0;
