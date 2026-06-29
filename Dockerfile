@@ -8,6 +8,8 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY server/package.json server/package.json
 COPY cli/package.json cli/package.json
+COPY agent/package.json agent/package.json
+COPY packages/telemetry-core/package.json packages/telemetry-core/package.json
 COPY plugins/claude-code/package.json plugins/claude-code/package.json
 COPY plugins/opencode/package.json plugins/opencode/package.json
 COPY website/package.json website/package.json
@@ -30,6 +32,8 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY server/package.json server/package.json
 COPY cli/package.json cli/package.json
+COPY agent/package.json agent/package.json
+COPY packages/telemetry-core/package.json packages/telemetry-core/package.json
 COPY plugins/claude-code/package.json plugins/claude-code/package.json
 COPY plugins/opencode/package.json plugins/opencode/package.json
 COPY website/package.json website/package.json
