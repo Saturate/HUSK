@@ -73,7 +73,7 @@ export function AppSidebar() {
 				{isAdmin && (
 					<SidebarGroup label="Admin">
 						<SidebarItem icon={Users} to="/users" label="Users" />
-						<SidebarItem icon={ServerCog} to="/admin-settings" label="Server Settings" disabled />
+						<SidebarItem icon={ServerCog} to="/admin-settings" label="Server Settings" />
 					</SidebarGroup>
 				)}
 			</nav>

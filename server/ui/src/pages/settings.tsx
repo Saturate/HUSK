@@ -1,32 +1,19 @@
 import { type ApiKey, api } from "@/api";
-import { useAuth } from "@/auth-context";
 import { AppLayout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/theme-context";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Check, ClipboardCopy } from "lucide-react";
 import { useState } from "react";
 
 export function SettingsPage() {
 	const { theme: current, setTheme, themes } = useTheme();
-	const { isAdmin } = useAuth();
 
 	return (
 		<AppLayout>
 			<h2 className="mb-6 text-2xl font-semibold">Settings</h2>
-
-			{isAdmin && <SessionCaptureSettings />}
 
 			<HooksConfigSection />
 
@@ -123,195 +110,6 @@ export function SettingsPage() {
 				</div>
 			</section>
 		</AppLayout>
-	);
-}
-
-function SessionCaptureSettings() {
-	const queryClient = useQueryClient();
-
-	const settingsQuery = useQuery({
-		queryKey: ["settings"],
-		queryFn: () => api.getSettings(),
-	});
-
-	const updateMutation = useMutation({
-		mutationFn: (settings: Record<string, string | null>) => api.updateSettings(settings),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["settings"] });
-		},
-	});
-
-	const settings = settingsQuery.data?.settings ?? {};
-
-	const [compressionApiKey, setCompressionApiKey] = useState("");
-	const [compressionBaseUrl, setCompressionBaseUrl] = useState("");
-	const [compressionModel, setCompressionModel] = useState("");
-
-	function handleUpdate(key: string, value: string) {
-		updateMutation.mutate({ [key]: value });
-	}
-
-	return (
-		<section className="mt-8">
-			<h3 className="mb-4 text-lg font-medium">Session Capture</h3>
-			<Card>
-				<CardContent className="space-y-4 pt-6">
-					<div className="space-y-1">
-						<Label htmlFor="memory-mode">Memory Mode</Label>
-						<Select
-							value={settings.memory_mode ?? "simple"}
-							onValueChange={(v) => handleUpdate("memory_mode", v)}
-						>
-							<SelectTrigger id="memory-mode" className="w-48">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="simple">Simple (manual only)</SelectItem>
-								<SelectItem value="full">Full (auto capture)</SelectItem>
-							</SelectContent>
-						</Select>
-						<p className="text-xs text-muted-foreground">
-							Simple mode only stores memories when explicitly requested. Full mode auto-captures
-							session data via hooks.
-						</p>
-					</div>
-
-					<div className="space-y-1">
-						<Label htmlFor="compression-mode">Compression Mode</Label>
-						<Select
-							value={settings.compression_mode ?? "client"}
-							onValueChange={(v) => handleUpdate("compression_mode", v)}
-						>
-							<SelectTrigger id="compression-mode" className="w-48">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="client">Client-side</SelectItem>
-								<SelectItem value="server">Server-side</SelectItem>
-							</SelectContent>
-						</Select>
-						<p className="text-xs text-muted-foreground">
-							Server-side compression uses an LLM to summarize sessions automatically.
-						</p>
-					</div>
-
-					{(settings.compression_mode ?? "client") === "server" && (
-						<>
-							<div className="space-y-1">
-								<Label htmlFor="compression-provider">LLM Provider</Label>
-								<Select
-									value={settings.compression_provider ?? "anthropic"}
-									onValueChange={(v) => handleUpdate("compression_provider", v)}
-								>
-									<SelectTrigger id="compression-provider" className="w-64">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="anthropic">Anthropic (direct API)</SelectItem>
-										<SelectItem value="openrouter">
-											OpenAI-compatible (OpenRouter, llama.cpp, vLLM, etc.)
-										</SelectItem>
-										<SelectItem value="ollama">Ollama</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-
-							{/* Endpoint URL: shown for OpenAI-compatible and Ollama */}
-							{(settings.compression_provider ?? "anthropic") !== "anthropic" && (
-								<div className="space-y-1">
-									<Label htmlFor="compression-base-url">Endpoint URL</Label>
-									<div className="flex gap-2">
-										<Input
-											id="compression-base-url"
-											className="w-72"
-											placeholder={
-												(settings.compression_provider ?? "anthropic") === "ollama"
-													? "http://localhost:11434"
-													: "https://openrouter.ai/api/v1"
-											}
-											value={compressionBaseUrl}
-											onChange={(e) => setCompressionBaseUrl(e.target.value)}
-										/>
-										<Button
-											size="sm"
-											variant="outline"
-											disabled={!compressionBaseUrl.trim()}
-											onClick={() => {
-												handleUpdate("compression_base_url", compressionBaseUrl.trim());
-												setCompressionBaseUrl("");
-											}}
-										>
-											Save
-										</Button>
-									</div>
-									<p className="text-xs text-muted-foreground">
-										{(settings.compression_provider ?? "anthropic") === "ollama"
-											? "Ollama server URL"
-											: "Any endpoint that serves /v1/chat/completions (OpenRouter, llama.cpp, vLLM, LM Studio, Groq)"}
-									</p>
-								</div>
-							)}
-
-							<div className="space-y-1">
-								<Label htmlFor="compression-model">Model</Label>
-								<div className="flex gap-2">
-									<Input
-										id="compression-model"
-										className="w-72"
-										placeholder={
-											(settings.compression_provider ?? "anthropic") === "ollama"
-												? "llama3.2"
-												: (settings.compression_model ?? "claude-haiku-4-5-20251001")
-										}
-										value={compressionModel}
-										onChange={(e) => setCompressionModel(e.target.value)}
-									/>
-									<Button
-										size="sm"
-										variant="outline"
-										disabled={!compressionModel.trim()}
-										onClick={() => {
-											handleUpdate("compression_model", compressionModel.trim());
-											setCompressionModel("");
-										}}
-									>
-										Save
-									</Button>
-								</div>
-							</div>
-
-							{/* API key: not needed for Ollama */}
-							{(settings.compression_provider ?? "anthropic") !== "ollama" && (
-								<div className="space-y-1">
-									<Label htmlFor="compression-api-key">API Key</Label>
-									<div className="flex gap-2">
-										<Input
-											id="compression-api-key"
-											type="password"
-											className="w-72"
-											placeholder={settings.compression_api_key ? "****" : "Not set"}
-											value={compressionApiKey}
-											onChange={(e) => setCompressionApiKey(e.target.value)}
-										/>
-										<Button
-											size="sm"
-											variant="outline"
-											disabled={!compressionApiKey.trim()}
-											onClick={() => {
-												handleUpdate("compression_api_key", compressionApiKey.trim());
-												setCompressionApiKey("");
-											}}
-										>
-											Save
-										</Button>
-									</div>
-								</div>
-							)}
-						</>
-					)}
-				</CardContent>
-			</Card>
-		</section>
 	);
 }
 

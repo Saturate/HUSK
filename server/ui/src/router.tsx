@@ -11,6 +11,7 @@ import { MemoriesPage } from "@/pages/memories";
 import { ModelsPage } from "@/pages/models";
 import { ProjectsPage } from "@/pages/projects";
 import { SecretsPage } from "@/pages/secrets";
+import { ServerSettingsPage } from "@/pages/server-settings";
 import { SettingsPage } from "@/pages/settings";
 import { SetupPage } from "@/pages/setup";
 import { TimelinePage } from "@/pages/timeline";
@@ -67,6 +68,7 @@ export function App() {
 								<Route path="/workspaces" element={<WorkspacesPage />} />
 								<Route path="/users" element={<UsersPage />} />
 								<Route path="/settings" element={<SettingsPage />} />
+								<Route path="/admin-settings" element={<ServerSettingsPage />} />
 							</Route>
 							<Route path="*" element={<Navigate to="/dashboard" replace />} />
 						</Routes>
