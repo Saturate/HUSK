@@ -150,6 +150,7 @@ export async function compressTrace(trace: TraceRow): Promise<string | null> {
 					userId: apiKey.user_id,
 					gitRemote: trace.project,
 					scope: "session",
+					memoryType: "session",
 					metadata: {
 						source: "trace_compression",
 						trace_id: trace.trace_id,

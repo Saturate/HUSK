@@ -164,12 +164,16 @@ export interface FiltersResponse {
 export interface SearchResult {
 	score: number;
 	id: string;
+	memory_id?: string;
 	api_key_id: string;
 	git_remote: string | null;
 	scope: string;
 	summary: string;
 	metadata: string | null;
 	created_at: string;
+	memory_type?: string | null;
+	title?: string | null;
+	path?: string | null;
 }
 
 export interface SearchResponse {
