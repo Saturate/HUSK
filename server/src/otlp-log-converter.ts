@@ -30,7 +30,10 @@ interface PendingTool {
 
 const seenSessions = new Set<string>();
 const pendingTools = new Map<string, PendingTool>();
-let turnCounter = new Map<string, number>(); // session -> turn count
+const turnCounter = new Map<string, number>();
+const lastEventTime = new Map<string, string>(); // session -> last event ISO timestamp
+
+const PAUSE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes of inactivity = pause span
 
 // --- Helpers ---
 
@@ -167,6 +170,30 @@ export async function processLogRecords(
 			}
 		}
 
+		// Detect inactivity gaps and insert pause spans
+		const lastTime = lastEventTime.get(sessionId);
+		if (lastTime && timestamp) {
+			const gap = new Date(timestamp).getTime() - new Date(lastTime).getTime();
+			if (gap > PAUSE_THRESHOLD_MS) {
+				const pauseMins = Math.round(gap / 60_000);
+				const pauseLabel = pauseMins >= 60 ? `${Math.floor(pauseMins / 60)}h ${pauseMins % 60}m` : `${pauseMins}m`;
+				try {
+					await provider.createSpan({
+						traceId,
+						spanId: randomSpanId(),
+						name: `pause/${pauseLabel}`,
+						kind: "notification",
+						startedAt: lastTime,
+						endedAt: timestamp,
+						durationMs: gap,
+						attributes: { pause: true, gap_minutes: pauseMins },
+					});
+					spanCount++;
+				} catch { /* best effort */ }
+			}
+		}
+		if (timestamp) lastEventTime.set(sessionId, timestamp);
+
 		switch (eventType) {
 			case "claude_code.api_request": {
 				const model = (attrs.model as string) ?? null;
@@ -202,6 +229,19 @@ export async function processLogRecords(
 					},
 				});
 				spanCount++;
+
+				// Rolling trace totals
+				const db = getDb();
+				db.query(
+					`UPDATE traces SET
+						total_turns = total_turns + 1,
+						total_cost_usd = total_cost_usd + COALESCE(?, 0),
+						total_input_tokens = total_input_tokens + COALESCE(?, 0),
+						total_output_tokens = total_output_tokens + COALESCE(?, 0),
+						model = COALESCE(?, model)
+					 WHERE trace_id = ?`,
+				).run(costUsd, inputTokens, outputTokens, model, traceId);
+
 				break;
 			}
 
@@ -276,6 +316,10 @@ export async function processLogRecords(
 					});
 				}
 				spanCount++;
+
+				// Rolling tool count on trace
+				getDb().query("UPDATE traces SET total_tool_calls = total_tool_calls + 1 WHERE trace_id = ?").run(pending?.traceId ?? traceId);
+
 				break;
 			}
 
