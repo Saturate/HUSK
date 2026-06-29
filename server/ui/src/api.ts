@@ -161,6 +161,26 @@ export interface FiltersResponse {
 	paths: string[];
 }
 
+export interface KnowledgeTreeProject {
+	project: string;
+	workspace: string | null;
+	workspace_id: string | null;
+	types: Record<string, number>;
+	total: number;
+}
+
+export interface KnowledgeTreeWorkspace {
+	workspace: string;
+	workspace_id: string | null;
+	projects: KnowledgeTreeProject[];
+	total: number;
+}
+
+export interface KnowledgeTreeResponse {
+	workspaces: KnowledgeTreeWorkspace[];
+	projects: KnowledgeTreeProject[];
+}
+
 export interface SearchResult {
 	score: number;
 	id: string;
@@ -419,6 +439,10 @@ export const api = {
 		return request<MemoriesResponse>(`/api/admin/memories${qs ? `?${qs}` : ""}`);
 	},
 
+	getKnowledgeTree() {
+		return request<KnowledgeTreeResponse>("/api/admin/knowledge/tree");
+	},
+
 	searchMemories(query: string, opts?: { git_remote?: string; scope?: string; limit?: number }) {
 		return request<SearchResponse>("/api/admin/search", {
 			method: "POST",
@@ -662,7 +686,13 @@ export const api = {
 		return request<DailyCost[]>(`/telemetry/stats/daily${qs ? `?${qs}` : ""}`);
 	},
 
-	getTraces(opts?: { project?: string; model?: string; status?: string; limit?: number; offset?: number }) {
+	getTraces(opts?: {
+		project?: string;
+		model?: string;
+		status?: string;
+		limit?: number;
+		offset?: number;
+	}) {
 		const params = new URLSearchParams();
 		if (opts?.project) params.set("project", opts.project);
 		if (opts?.model) params.set("model", opts.model);

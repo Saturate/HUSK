@@ -3,10 +3,10 @@ import { randomBackronym } from "@/husk";
 import { cn } from "@/lib/utils";
 import {
 	Activity,
+	Blocks,
 	Brain,
 	Clock,
 	Cpu,
-	Blocks,
 	FolderOpen,
 	GitGraph,
 	KeyRound,
@@ -19,9 +19,9 @@ import {
 	Users,
 } from "lucide-react";
 import { useMemo } from "react";
+import { useSidebar } from "./sidebar-context";
 import { SidebarGroup } from "./sidebar-group";
 import { SidebarItem } from "./sidebar-item";
-import { useSidebar } from "./sidebar-context";
 
 export function AppSidebar() {
 	const { isAdmin, username, logout } = useAuth();
@@ -46,10 +46,7 @@ export function AppSidebar() {
 			</div>
 
 			{/* Navigation */}
-			<nav
-				className="flex-1 overflow-y-auto py-3 space-y-4"
-				onClick={isMobile ? close : undefined}
-			>
+			<nav className="flex-1 overflow-y-auto py-3 space-y-4" onClick={isMobile ? close : undefined}>
 				<SidebarGroup label="Home">
 					<SidebarItem icon={LayoutDashboard} to="/dashboard" label="Dashboard" />
 				</SidebarGroup>
@@ -64,7 +61,7 @@ export function AppSidebar() {
 				</SidebarGroup>
 
 				<SidebarGroup label="Knowledge">
-					<SidebarItem icon={Brain} to="/memories" label="Memories" />
+					<SidebarItem icon={Brain} to="/knowledge" label="Knowledge" />
 					<SidebarItem icon={GitGraph} to="/graph" label="Graph" />
 				</SidebarGroup>
 

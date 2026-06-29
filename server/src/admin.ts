@@ -4,7 +4,6 @@ import { jwtMiddleware } from "./auth.js";
 import { parseSummary, setCompressionProvider } from "./compression.js";
 import {
 	UserScope,
-	getDb,
 	assignProjectToWorkspace,
 	countMemories,
 	countObservations,
@@ -16,6 +15,8 @@ import {
 	deleteSession,
 	deleteWorkspace,
 	getConfig,
+	getDb,
+	getKnowledgeTree,
 	getMemory,
 	getSession,
 	getUserSetting,
@@ -90,6 +91,78 @@ admin.get("/filters", (c) => {
 	const types = listDistinctMemoryTypes(userId);
 	const paths = listDistinctPaths(userId);
 	return c.json({ projects, scopes, types, paths });
+});
+
+// --- Knowledge tree ---
+
+admin.get("/knowledge/tree", (c) => {
+	const isAdmin = c.get("role") === "admin";
+	const userId = isAdmin ? undefined : c.get("userId");
+	const nodes = getKnowledgeTree(userId);
+
+	interface ProjectEntry {
+		project: string;
+		workspace: string | null;
+		workspace_id: string | null;
+		types: Record<string, number>;
+		total: number;
+	}
+
+	const projectMap = new Map<string, ProjectEntry>();
+	for (const node of nodes) {
+		const entry = projectMap.get(node.project) ?? {
+			project: node.project,
+			workspace: node.workspace,
+			workspace_id: node.workspace_id,
+			types: {},
+			total: 0,
+		};
+		entry.types[node.memory_type] = (entry.types[node.memory_type] ?? 0) + node.count;
+		entry.total += node.count;
+		projectMap.set(node.project, entry);
+	}
+
+	const projects = Array.from(projectMap.values());
+	projects.sort((a, b) => {
+		if (a.project === "__general__") return -1;
+		if (b.project === "__general__") return 1;
+		const wsA = a.workspace ?? "￿";
+		const wsB = b.workspace ?? "￿";
+		if (wsA !== wsB) return wsA.localeCompare(wsB);
+		return a.project.localeCompare(b.project);
+	});
+
+	// Group into workspaces for the UI
+	interface WorkspaceEntry {
+		workspace: string;
+		workspace_id: string | null;
+		projects: ProjectEntry[];
+		total: number;
+	}
+
+	const workspaceMap = new Map<string, WorkspaceEntry>();
+	for (const p of projects) {
+		if (p.project === "__general__") continue;
+		const wsKey = p.workspace ?? "__unassigned__";
+		const ws = workspaceMap.get(wsKey) ?? {
+			workspace: p.workspace ?? "__unassigned__",
+			workspace_id: p.workspace_id,
+			projects: [],
+			total: 0,
+		};
+		ws.projects.push(p);
+		ws.total += p.total;
+		workspaceMap.set(wsKey, ws);
+	}
+
+	const workspaces = Array.from(workspaceMap.values());
+	workspaces.sort((a, b) => {
+		if (a.workspace === "__unassigned__") return 1;
+		if (b.workspace === "__unassigned__") return -1;
+		return a.workspace.localeCompare(b.workspace);
+	});
+
+	return c.json({ workspaces, projects });
 });
 
 // --- Search ---

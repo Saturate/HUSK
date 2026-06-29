@@ -4,7 +4,13 @@ const log = getLogger(["husk", "graph"]);
 
 // --- Types ---
 
-export const EDGE_TYPES = ["caused_by", "contradicts", "supersedes", "related_to"] as const;
+export const EDGE_TYPES = [
+	"caused_by",
+	"contradicts",
+	"supersedes",
+	"related_to",
+	"derived_from",
+] as const;
 export type EdgeType = (typeof EDGE_TYPES)[number];
 
 export interface GraphEdge {

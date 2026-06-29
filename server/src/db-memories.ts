@@ -9,6 +9,7 @@ export const MEMORY_TYPES = [
 	"fact",
 	"convention",
 	"goal",
+	"session",
 ] as const;
 export type MemoryType = (typeof MEMORY_TYPES)[number];
 
@@ -81,9 +82,7 @@ export function createMemory(params: {
 export function getMemory(id: string): MemoryRow | undefined {
 	return (
 		getDb()
-			.query<MemoryRow, [string]>(
-				`SELECT * FROM memories m WHERE m.id = ? AND ${ACTIVE_FILTER}`,
-			)
+			.query<MemoryRow, [string]>(`SELECT * FROM memories m WHERE m.id = ? AND ${ACTIVE_FILTER}`)
 			.get(id) ?? undefined
 	);
 }
@@ -207,9 +206,7 @@ export function updateMemoryFields(
 	if (sets.length <= 1) return false;
 
 	params.push(id);
-	const result = db
-		.query(`UPDATE memories SET ${sets.join(", ")} WHERE id = ?`)
-		.run(...params);
+	const result = db.query(`UPDATE memories SET ${sets.join(", ")} WHERE id = ?`).run(...params);
 	return result.changes > 0;
 }
 
@@ -414,6 +411,39 @@ export function countMemories(opts?: {
 	return row?.count ?? 0;
 }
 
+// --- Knowledge tree ---
+
+export interface KnowledgeTreeNode {
+	project: string;
+	workspace: string | null;
+	workspace_id: string | null;
+	memory_type: string;
+	count: number;
+}
+
+export function getKnowledgeTree(userId?: string): KnowledgeTreeNode[] {
+	const db = getDb();
+	const userFilter = userId ? " AND k.user_id = ?" : "";
+	const params = userId ? [userId] : [];
+
+	return db
+		.query<KnowledgeTreeNode, string[]>(
+			`SELECT COALESCE(m.git_remote, '__general__') as project,
+			        w.name as workspace,
+			        w.id as workspace_id,
+			        COALESCE(m.memory_type, 'untyped') as memory_type,
+			        COUNT(*) as count
+			 FROM memories m
+			 JOIN api_keys k ON m.api_key_id = k.id
+			 LEFT JOIN workspace_projects wp ON m.git_remote = wp.git_remote
+			 LEFT JOIN workspaces w ON wp.workspace_id = w.id
+			 WHERE ${ACTIVE_FILTER}${userFilter}
+			 GROUP BY project, workspace, memory_type
+			 ORDER BY workspace, project, memory_type`,
+		)
+		.all(...params);
+}
+
 // --- User Settings ---
 
 export function getUserSetting(userId: string, key: string): string | undefined {
@@ -462,9 +492,8 @@ export function createWorkspace(name: string, createdBy: string): string {
 
 export function getWorkspace(id: string): WorkspaceRow | undefined {
 	return (
-		getDb()
-			.query<WorkspaceRow, [string]>("SELECT * FROM workspaces WHERE id = ?")
-			.get(id) ?? undefined
+		getDb().query<WorkspaceRow, [string]>("SELECT * FROM workspaces WHERE id = ?").get(id) ??
+		undefined
 	);
 }
 
@@ -472,9 +501,11 @@ export function getWorkspaceByName(name: string, userId?: string): WorkspaceRow 
 	const db = getDb();
 	if (userId) {
 		return (
-			db.query<WorkspaceRow, [string, string]>(
-				"SELECT * FROM workspaces WHERE name = ? AND created_by = ?",
-			).get(name, userId) ?? undefined
+			db
+				.query<WorkspaceRow, [string, string]>(
+					"SELECT * FROM workspaces WHERE name = ? AND created_by = ?",
+				)
+				.get(name, userId) ?? undefined
 		);
 	}
 	return (
@@ -562,19 +593,23 @@ export function getWorkspaceForProject(
 	const db = getDb();
 	if (userId) {
 		return (
-			db.query<WorkspaceRow, [string, string]>(
-				`SELECT w.* FROM workspaces w
+			db
+				.query<WorkspaceRow, [string, string]>(
+					`SELECT w.* FROM workspaces w
 				 JOIN workspace_projects wp ON w.id = wp.workspace_id
 				 WHERE wp.git_remote = ? AND w.created_by = ?`,
-			).get(gitRemote, userId) ?? undefined
+				)
+				.get(gitRemote, userId) ?? undefined
 		);
 	}
 	return (
-		db.query<WorkspaceRow, [string]>(
-			`SELECT w.* FROM workspaces w
+		db
+			.query<WorkspaceRow, [string]>(
+				`SELECT w.* FROM workspaces w
 			 JOIN workspace_projects wp ON w.id = wp.workspace_id
 			 WHERE wp.git_remote = ?`,
-		).get(gitRemote) ?? undefined
+			)
+			.get(gitRemote) ?? undefined
 	);
 }
 

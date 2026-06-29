@@ -17,7 +17,7 @@ import { storeMemory } from "./ingest.js";
 
 const log = getLogger(["husk", "compression"]);
 
-const FETCH_TIMEOUT_MS = 30_000;
+const FETCH_TIMEOUT_MS = 120_000;
 
 const COMPRESSION_PROMPT = `Summarize this batch of coding session observations. Output these structured sections:
 
@@ -85,11 +85,153 @@ export function parseSummary(summary: string): ParsedSummary {
 	return result;
 }
 
+// --- Structured extraction ---
+
+export interface ExtractedKnowledge {
+	type: "decision" | "lesson" | "fact";
+	content: string;
+}
+
+export interface StructuredCompression {
+	title: string;
+	summary: string;
+	extracted: ExtractedKnowledge[];
+}
+
+const EXTRACTION_PROMPT = `You are a knowledge extraction system. Analyze these coding session observations and return markdown with YAML frontmatter.
+
+Format your response EXACTLY like this:
+
+---
+title: Short descriptive session title (max 80 chars)
+extracted:
+  - type: decision
+    content: Chose X over Y because Z
+  - type: fact
+    content: The API rate limits at 100 req/min
+---
+
+## Request
+What the user asked (1-2 sentences).
+
+## Completed
+What was done. Name specific files, functions, patterns.
+
+## Learned
+Key decisions, constraints, or patterns discovered.
+
+## Next Steps
+Unfinished work or open questions. If nothing remains, write "None."
+
+Rules for the title:
+- Describe what was done, not "Here is a summary"
+- Good: "DMARC report analysis and DNS record updates"
+- Bad: "Here is the summary of the coding session observations"
+
+Rules for extracted items (0-5 items):
+- "type" is one of: decision (a choice made and why), lesson (something learned the hard way), fact (a reusable piece of knowledge)
+- "content" must be self-contained and useful to someone who has never seen this session
+- Be specific: name files, APIs, versions, constraints
+- Skip trivial observations like "the user switched branches"
+
+Rules for the summary body:
+- Do NOT narrate tool output or list commands that were run
+- Focus on what was accomplished and why
+- Use exact filenames and symbols (e.g., README.md not README_md)
+- In "Next Steps", list only technical work that remains
+
+Session observations:`;
+
+export function parseStructuredCompression(raw: string): StructuredCompression | null {
+	// Strip markdown code fences if present
+	const cleaned = raw
+		.replace(/^```(?:yaml|yml|markdown|md)?\s*\n?/i, "")
+		.replace(/\n?```\s*$/i, "")
+		.trim();
+
+	// Try YAML frontmatter first: ---\n...\n---\n<body>
+	const frontmatterMatch = cleaned.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
+	if (frontmatterMatch) {
+		try {
+			const fm = frontmatterMatch[1] ?? "";
+			const body = frontmatterMatch[2]?.trim();
+
+			const titleMatch = fm.match(/^title:\s*(.+)$/m);
+			const title = titleMatch?.[1]?.replace(/^["']|["']$/g, "").trim();
+			if (!title || !body) return null;
+
+			const validTypes = new Set(["decision", "lesson", "fact"]);
+			const extracted: ExtractedKnowledge[] = [];
+
+			const itemRegex = /-\s*type:\s*(\w+)\s*\n\s*content:\s*(.+?)(?=\n\s*-\s*type:|\n---|\n*$)/gs;
+			for (const match of fm.matchAll(itemRegex)) {
+				const type = match[1]?.trim() ?? "";
+				const content = match[2]?.replace(/^["']|["']$/g, "").trim() ?? "";
+				if (validTypes.has(type) && content.length > 10) {
+					extracted.push({ type: type as ExtractedKnowledge["type"], content });
+				}
+			}
+
+			return {
+				title: title.slice(0, 80),
+				summary: body,
+				extracted: extracted.slice(0, 5),
+			};
+		} catch {
+			// Fall through to JSON parsing
+		}
+	}
+
+	// Try JSON
+	try {
+		const parsed = JSON.parse(cleaned) as {
+			title?: string;
+			summary?: string;
+			extracted?: Array<{ type?: string; content?: string }>;
+		};
+
+		if (!parsed.title || !parsed.summary) return null;
+
+		const validTypes = new Set(["decision", "lesson", "fact"]);
+		const extracted: ExtractedKnowledge[] = (parsed.extracted ?? [])
+			.filter((e) => e.type && validTypes.has(e.type) && e.content && e.content.length > 10)
+			.slice(0, 5)
+			.map((e) => ({ type: e.type as ExtractedKnowledge["type"], content: e.content ?? "" }));
+
+		return {
+			title: parsed.title.slice(0, 80),
+			summary: parsed.summary,
+			extracted,
+		};
+	} catch {
+		// Fall through
+	}
+
+	// Try to salvage: if the response has ## headers, extract title from first line
+	const lines = cleaned.split("\n");
+	const firstLine = lines[0]?.trim() ?? "";
+	if (firstLine && cleaned.includes("\n##")) {
+		const title = firstLine
+			.replace(/^#+\s*/, "")
+			.replace(/^title:\s*/i, "")
+			.slice(0, 80);
+		if (title.length > 5) {
+			return {
+				title,
+				summary: raw.trim(),
+				extracted: [],
+			};
+		}
+	}
+
+	return null;
+}
+
 // --- Provider interface ---
 
 export interface CompressionProvider {
 	summarize(observations: ObservationRow[], project: string | null): Promise<string>;
-	/** Generic completion for short classification tasks. */
+	summarizeStructured(text: string): Promise<string>;
 	complete(prompt: string, maxTokens: number): Promise<string>;
 	readonly name: string;
 }
@@ -152,6 +294,10 @@ class AnthropicProvider implements CompressionProvider {
 	async summarize(observations: ObservationRow[], project: string | null): Promise<string> {
 		const observationText = formatObservations(observations, project);
 		return this.call(`${COMPRESSION_PROMPT}\n\n${observationText}`, 800);
+	}
+
+	async summarizeStructured(text: string): Promise<string> {
+		return this.call(`${EXTRACTION_PROMPT}\n\n${text}`, 2000);
 	}
 
 	async complete(prompt: string, maxTokens: number): Promise<string> {
@@ -219,6 +365,10 @@ class OpenRouterProvider implements CompressionProvider {
 		return this.call(`${COMPRESSION_PROMPT}\n\n${observationText}`, 800);
 	}
 
+	async summarizeStructured(text: string): Promise<string> {
+		return this.call(`${EXTRACTION_PROMPT}\n\n${text}`, 2000);
+	}
+
 	async complete(prompt: string, maxTokens: number): Promise<string> {
 		return this.call(prompt, maxTokens);
 	}
@@ -269,6 +419,10 @@ class OllamaProvider implements CompressionProvider {
 	async summarize(observations: ObservationRow[], project: string | null): Promise<string> {
 		const observationText = formatObservations(observations, project);
 		return this.call(`${COMPRESSION_PROMPT}\n\n${observationText}`);
+	}
+
+	async summarizeStructured(text: string): Promise<string> {
+		return this.call(`${EXTRACTION_PROMPT}\n\n${text}`);
 	}
 
 	async complete(prompt: string, _maxTokens: number): Promise<string> {
