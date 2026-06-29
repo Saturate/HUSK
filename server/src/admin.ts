@@ -678,6 +678,56 @@ function claudeTypeToMemoryType(type: string | null): string {
 	return map[type] ?? "fact";
 }
 
+admin.get("/backfill/claude-discover", (c) => {
+	if (c.get("role") !== "admin") {
+		return c.json({ error: "Forbidden." }, 403);
+	}
+
+	const homeDir = process.env.HOME ?? process.env.USERPROFILE ?? "";
+	const claudeProjectsDir = join(homeDir, ".claude", "projects");
+
+	if (!existsSync(claudeProjectsDir)) {
+		return c.json({ claude_home: claudeProjectsDir, projects: [] });
+	}
+
+	const projects: Array<{
+		path: string;
+		name: string;
+		memory_count: number;
+		files: string[];
+	}> = [];
+
+	try {
+		for (const entry of readdirSync(claudeProjectsDir, { withFileTypes: true })) {
+			if (!entry.isDirectory()) continue;
+			const memoryDir = join(claudeProjectsDir, entry.name, "memory");
+			if (!existsSync(memoryDir)) continue;
+
+			const files = readdirSync(memoryDir).filter((f) => f.endsWith(".md") && f !== "MEMORY.md");
+			if (files.length === 0) continue;
+
+			const dirName = entry.name.replace(/^-/, "/").replaceAll("-", "/");
+
+			projects.push({
+				path: memoryDir,
+				name: dirName,
+				memory_count: files.length,
+				files,
+			});
+		}
+	} catch {
+		return c.json({
+			claude_home: claudeProjectsDir,
+			projects: [],
+			error: "Failed to read directory",
+		});
+	}
+
+	projects.sort((a, b) => b.memory_count - a.memory_count);
+
+	return c.json({ claude_home: claudeProjectsDir, projects });
+});
+
 admin.post("/backfill/claude-memories", async (c) => {
 	if (c.get("role") !== "admin") {
 		return c.json({ error: "Forbidden." }, 403);

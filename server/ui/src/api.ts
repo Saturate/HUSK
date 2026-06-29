@@ -706,4 +706,31 @@ export const api = {
 	getTraceDetail(traceId: string) {
 		return request<TraceDetail>(`/telemetry/traces/${encodeURIComponent(traceId)}`);
 	},
+
+	// --- Claude Code backfill ---
+
+	discoverClaudeMemories() {
+		return request<{
+			claude_home: string;
+			projects: Array<{
+				path: string;
+				name: string;
+				memory_count: number;
+				files: string[];
+			}>;
+		}>("/api/admin/backfill/claude-discover");
+	},
+
+	backfillClaudeMemories(path: string, gitRemote?: string) {
+		return request<{
+			imported: number;
+			duplicates: number;
+			errors: number;
+			skipped: number;
+			results: Array<{ file: string; status: string; id?: string; title?: string }>;
+		}>("/api/admin/backfill/claude-memories", {
+			method: "POST",
+			body: JSON.stringify({ path, git_remote: gitRemote }),
+		});
+	},
 };
