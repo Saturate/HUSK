@@ -23,8 +23,8 @@ import {
 import { getProvider } from "./embeddings.js";
 import { EDGE_TYPES, getGraphProviderOrNull } from "./graph.js";
 import { StoreMemoryError, isDuplicate, storeMemory } from "./ingest.js";
-import { getStorageProvider } from "./storage.js";
 import { registerTelemetryTools } from "./mcp-telemetry.js";
+import { getStorageProvider } from "./storage.js";
 import { getTelemetryProviderOrNull } from "./telemetry.js";
 import { resolveWorkspace } from "./workspace.js";
 

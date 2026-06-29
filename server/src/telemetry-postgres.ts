@@ -15,7 +15,7 @@ import type {
 	TraceTotals,
 } from "./telemetry.js";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- postgres.js types loaded dynamically
+// biome-ignore lint/suspicious/noExplicitAny: postgres.js types loaded dynamically
 type Sql = any;
 
 export class PostgresTelemetryProvider implements TelemetryProvider {
@@ -94,7 +94,8 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 		await this.sql`CREATE INDEX IF NOT EXISTS idx_spans_trace ON spans(trace_id)`;
 		await this.sql`CREATE INDEX IF NOT EXISTS idx_spans_parent ON spans(parent_span_id)`;
 		await this.sql`CREATE INDEX IF NOT EXISTS idx_spans_kind ON spans(kind)`;
-		await this.sql`CREATE INDEX IF NOT EXISTS idx_spans_tool ON spans(tool_name) WHERE tool_name IS NOT NULL`;
+		await this
+			.sql`CREATE INDEX IF NOT EXISTS idx_spans_tool ON spans(tool_name) WHERE tool_name IS NOT NULL`;
 		await this.sql`CREATE INDEX IF NOT EXISTS idx_spans_started ON spans(started_at)`;
 
 		await this.sql`
@@ -198,17 +199,50 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 		const sets: string[] = [];
 		const values: Record<string, unknown> = {};
 
-		if (updates.endedAt !== undefined) { sets.push("ended_at = ${endedAt}"); values.endedAt = updates.endedAt; }
-		if (updates.durationMs !== undefined) { sets.push("duration_ms = ${durationMs}"); values.durationMs = updates.durationMs; }
-		if (updates.status !== undefined) { sets.push("status = ${status}"); values.status = updates.status; }
-		if (updates.exitCode !== undefined) { sets.push("exit_code = ${exitCode}"); values.exitCode = updates.exitCode; }
-		if (updates.outputSize !== undefined) { sets.push("output_size = ${outputSize}"); values.outputSize = updates.outputSize; }
-		if (updates.inputTokens !== undefined) { sets.push("input_tokens = ${inputTokens}"); values.inputTokens = updates.inputTokens; }
-		if (updates.outputTokens !== undefined) { sets.push("output_tokens = ${outputTokens}"); values.outputTokens = updates.outputTokens; }
-		if (updates.cacheReadTokens !== undefined) { sets.push("cache_read_tokens = ${cacheReadTokens}"); values.cacheReadTokens = updates.cacheReadTokens; }
-		if (updates.cacheCreateTokens !== undefined) { sets.push("cache_create_tokens = ${cacheCreateTokens}"); values.cacheCreateTokens = updates.cacheCreateTokens; }
-		if (updates.costUsd !== undefined) { sets.push("cost_usd = ${costUsd}"); values.costUsd = updates.costUsd; }
-		if (updates.attributes !== undefined) { sets.push("attributes = ${attrs}::jsonb"); values.attrs = JSON.stringify(updates.attributes); }
+		if (updates.endedAt !== undefined) {
+			sets.push("ended_at = ${endedAt}");
+			values.endedAt = updates.endedAt;
+		}
+		if (updates.durationMs !== undefined) {
+			sets.push("duration_ms = ${durationMs}");
+			values.durationMs = updates.durationMs;
+		}
+		if (updates.status !== undefined) {
+			sets.push("status = ${status}");
+			values.status = updates.status;
+		}
+		if (updates.exitCode !== undefined) {
+			sets.push("exit_code = ${exitCode}");
+			values.exitCode = updates.exitCode;
+		}
+		if (updates.outputSize !== undefined) {
+			sets.push("output_size = ${outputSize}");
+			values.outputSize = updates.outputSize;
+		}
+		if (updates.inputTokens !== undefined) {
+			sets.push("input_tokens = ${inputTokens}");
+			values.inputTokens = updates.inputTokens;
+		}
+		if (updates.outputTokens !== undefined) {
+			sets.push("output_tokens = ${outputTokens}");
+			values.outputTokens = updates.outputTokens;
+		}
+		if (updates.cacheReadTokens !== undefined) {
+			sets.push("cache_read_tokens = ${cacheReadTokens}");
+			values.cacheReadTokens = updates.cacheReadTokens;
+		}
+		if (updates.cacheCreateTokens !== undefined) {
+			sets.push("cache_create_tokens = ${cacheCreateTokens}");
+			values.cacheCreateTokens = updates.cacheCreateTokens;
+		}
+		if (updates.costUsd !== undefined) {
+			sets.push("cost_usd = ${costUsd}");
+			values.costUsd = updates.costUsd;
+		}
+		if (updates.attributes !== undefined) {
+			sets.push("attributes = ${attrs}::jsonb");
+			values.attrs = JSON.stringify(updates.attributes);
+		}
 
 		if (sets.length === 0) return;
 
@@ -234,12 +268,30 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 		const params: unknown[] = [];
 		let idx = 1;
 
-		if (opts.from) { conditions.push(`started_at >= $${idx++}`); params.push(opts.from); }
-		if (opts.to) { conditions.push(`started_at <= $${idx++}`); params.push(opts.to); }
-		if (opts.apiKeyId) { conditions.push(`api_key_id = $${idx++}`); params.push(opts.apiKeyId); }
-		if (opts.project) { conditions.push(`project = $${idx++}`); params.push(opts.project); }
-		if (opts.status) { conditions.push(`status = $${idx++}`); params.push(opts.status); }
-		if (opts.model) { conditions.push(`model = $${idx++}`); params.push(opts.model); }
+		if (opts.from) {
+			conditions.push(`started_at >= $${idx++}`);
+			params.push(opts.from);
+		}
+		if (opts.to) {
+			conditions.push(`started_at <= $${idx++}`);
+			params.push(opts.to);
+		}
+		if (opts.apiKeyId) {
+			conditions.push(`api_key_id = $${idx++}`);
+			params.push(opts.apiKeyId);
+		}
+		if (opts.project) {
+			conditions.push(`project = $${idx++}`);
+			params.push(opts.project);
+		}
+		if (opts.status) {
+			conditions.push(`status = $${idx++}`);
+			params.push(opts.status);
+		}
+		if (opts.model) {
+			conditions.push(`model = $${idx++}`);
+			params.push(opts.model);
+		}
 
 		const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 		const limit = Math.min(opts.limit ?? 50, 200);
@@ -258,12 +310,16 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 			const rows = await this.sql<Record<string, unknown>[]>`
 				SELECT * FROM spans WHERE trace_id = ${traceId} AND kind = ${kind} ORDER BY started_at ASC
 			`;
-			return (rows as Record<string, unknown>[]).map((r: Record<string, unknown>) => this.normalizeSpan(r));
+			return (rows as Record<string, unknown>[]).map((r: Record<string, unknown>) =>
+				this.normalizeSpan(r),
+			);
 		}
 		const rows = await this.sql<Record<string, unknown>[]>`
 			SELECT * FROM spans WHERE trace_id = ${traceId} ORDER BY started_at ASC
 		`;
-		return (rows as Record<string, unknown>[]).map((r: Record<string, unknown>) => this.normalizeSpan(r));
+		return (rows as Record<string, unknown>[]).map((r: Record<string, unknown>) =>
+			this.normalizeSpan(r),
+		);
 	}
 
 	// --- Aggregation ---
@@ -393,10 +449,22 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 		const params: unknown[] = [];
 		let idx = 1;
 
-		if (opts.from) { conditions.push(`started_at >= $${idx++}`); params.push(opts.from); }
-		if (opts.to) { conditions.push(`started_at <= $${idx++}`); params.push(opts.to); }
-		if (opts.apiKeyId) { conditions.push(`api_key_id = $${idx++}`); params.push(opts.apiKeyId); }
-		if (opts.project) { conditions.push(`project = $${idx++}`); params.push(opts.project); }
+		if (opts.from) {
+			conditions.push(`started_at >= $${idx++}`);
+			params.push(opts.from);
+		}
+		if (opts.to) {
+			conditions.push(`started_at <= $${idx++}`);
+			params.push(opts.to);
+		}
+		if (opts.apiKeyId) {
+			conditions.push(`api_key_id = $${idx++}`);
+			params.push(opts.apiKeyId);
+		}
+		if (opts.project) {
+			conditions.push(`project = $${idx++}`);
+			params.push(opts.project);
+		}
 
 		return {
 			where: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "",
@@ -415,8 +483,14 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 			model: row.model ? String(row.model) : null,
 			agent_type: row.agent_type ? String(row.agent_type) : null,
 			status: String(row.status),
-			started_at: row.started_at instanceof Date ? row.started_at.toISOString() : String(row.started_at),
-			ended_at: row.ended_at instanceof Date ? row.ended_at.toISOString() : row.ended_at ? String(row.ended_at) : null,
+			started_at:
+				row.started_at instanceof Date ? row.started_at.toISOString() : String(row.started_at),
+			ended_at:
+				row.ended_at instanceof Date
+					? row.ended_at.toISOString()
+					: row.ended_at
+						? String(row.ended_at)
+						: null,
 			total_input_tokens: Number(row.total_input_tokens ?? 0),
 			total_output_tokens: Number(row.total_output_tokens ?? 0),
 			total_cache_read_tokens: Number(row.total_cache_read_tokens ?? 0),
@@ -426,7 +500,12 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 			total_tool_calls: Number(row.total_tool_calls ?? 0),
 			total_tool_failures: Number(row.total_tool_failures ?? 0),
 			summary: row.summary ? String(row.summary) : null,
-			last_compressed_at: row.last_compressed_at instanceof Date ? row.last_compressed_at.toISOString() : row.last_compressed_at ? String(row.last_compressed_at) : null,
+			last_compressed_at:
+				row.last_compressed_at instanceof Date
+					? row.last_compressed_at.toISOString()
+					: row.last_compressed_at
+						? String(row.last_compressed_at)
+						: null,
 		};
 	}
 
@@ -439,8 +518,14 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 			name: String(row.name),
 			kind: String(row.kind),
 			status: String(row.status),
-			started_at: row.started_at instanceof Date ? row.started_at.toISOString() : String(row.started_at),
-			ended_at: row.ended_at instanceof Date ? row.ended_at.toISOString() : row.ended_at ? String(row.ended_at) : null,
+			started_at:
+				row.started_at instanceof Date ? row.started_at.toISOString() : String(row.started_at),
+			ended_at:
+				row.ended_at instanceof Date
+					? row.ended_at.toISOString()
+					: row.ended_at
+						? String(row.ended_at)
+						: null,
 			duration_ms: row.duration_ms != null ? Number(row.duration_ms) : null,
 			tool_name: row.tool_name ? String(row.tool_name) : null,
 			input_summary: row.input_summary ? String(row.input_summary) : null,
@@ -452,7 +537,11 @@ export class PostgresTelemetryProvider implements TelemetryProvider {
 			cache_read_tokens: row.cache_read_tokens != null ? Number(row.cache_read_tokens) : null,
 			cache_create_tokens: row.cache_create_tokens != null ? Number(row.cache_create_tokens) : null,
 			cost_usd: row.cost_usd != null ? Number(row.cost_usd) : null,
-			attributes: row.attributes ? (typeof row.attributes === "string" ? row.attributes : JSON.stringify(row.attributes)) : null,
+			attributes: row.attributes
+				? typeof row.attributes === "string"
+					? row.attributes
+					: JSON.stringify(row.attributes)
+				: null,
 			linked_trace_id: row.linked_trace_id ? String(row.linked_trace_id) : null,
 		};
 	}

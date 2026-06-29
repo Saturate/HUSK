@@ -52,7 +52,10 @@ export function SidebarProvider({ children }: { children: ReactNode }) {
 		if (!isMobile) localStorage.setItem(STORAGE_KEY, "collapsed");
 	}, [isMobile]);
 
-	const value = useMemo(() => ({ isOpen, isMobile, toggle, close }), [isOpen, isMobile, toggle, close]);
+	const value = useMemo(
+		() => ({ isOpen, isMobile, toggle, close }),
+		[isOpen, isMobile, toggle, close],
+	);
 
 	return <SidebarContext value={value}>{children}</SidebarContext>;
 }

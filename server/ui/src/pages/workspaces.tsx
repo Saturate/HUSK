@@ -257,7 +257,9 @@ export function WorkspacesPage() {
 																	{assignRemote && (
 																		<div className="max-h-40 overflow-y-auto rounded-md border">
 																			{projects
-																				.filter((p) => p.toLowerCase().includes(assignRemote.toLowerCase()))
+																				.filter((p) =>
+																					p.toLowerCase().includes(assignRemote.toLowerCase()),
+																				)
 																				.map((p) => (
 																					<button
 																						key={p}

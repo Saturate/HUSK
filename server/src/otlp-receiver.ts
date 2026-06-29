@@ -1,6 +1,6 @@
-import { getLogger } from "@logtape/logtape";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { getLogger } from "@logtape/logtape";
 import { Hono } from "hono";
 import { bearerKeyMiddleware } from "./auth.js";
 import { calculateCost } from "./cost.js";
@@ -104,12 +104,9 @@ function extractDomainFields(attrs: Record<string, unknown>) {
 		model:
 			(attrs["gen_ai.request.model"] as string) ??
 			(attrs["llm.model"] as string) ??
-			(attrs["model"] as string) ??
+			(attrs.model as string) ??
 			null,
-		toolName:
-			(attrs["tool.name"] as string) ??
-			(attrs["husk.tool_name"] as string) ??
-			null,
+		toolName: (attrs["tool.name"] as string) ?? (attrs["husk.tool_name"] as string) ?? null,
 		inputSummary:
 			(attrs["husk.input_summary"] as string) ??
 			(attrs["gen_ai.prompt"] as string)?.slice(0, 2000) ??
@@ -127,18 +124,9 @@ function extractDomainFields(attrs: Record<string, unknown>) {
 		exitCode: (attrs["process.exit_code"] as number) ?? null,
 		outputSize: (attrs["husk.output_size"] as number) ?? null,
 		linkedTraceId: (attrs["husk.linked_trace_id"] as string) ?? null,
-		project:
-			(attrs["husk.project"] as string) ??
-			(attrs["project.name"] as string) ??
-			null,
-		gitBranch:
-			(attrs["husk.git_branch"] as string) ??
-			(attrs["vcs.branch"] as string) ??
-			null,
-		agentType:
-			(attrs["husk.agent_type"] as string) ??
-			(attrs["agent.type"] as string) ??
-			null,
+		project: (attrs["husk.project"] as string) ?? (attrs["project.name"] as string) ?? null,
+		gitBranch: (attrs["husk.git_branch"] as string) ?? (attrs["vcs.branch"] as string) ?? null,
+		agentType: (attrs["husk.agent_type"] as string) ?? (attrs["agent.type"] as string) ?? null,
 	};
 }
 
@@ -238,17 +226,29 @@ otlpReceiver.post("/v1/traces", async (c) => {
 				// Strip domain fields from attributes to avoid duplication
 				const remainingAttrs = { ...attrs };
 				for (const key of [
-					"gen_ai.request.model", "llm.model", "model",
-					"tool.name", "husk.tool_name",
-					"husk.input_summary", "gen_ai.prompt",
-					"gen_ai.usage.input_tokens", "llm.usage.prompt_tokens",
-					"gen_ai.usage.output_tokens", "llm.usage.completion_tokens",
-					"gen_ai.usage.cache_read_tokens", "gen_ai.usage.cache_create_tokens",
-					"process.exit_code", "husk.output_size",
-					"husk.linked_trace_id", "husk.span.kind",
-					"husk.project", "project.name",
-					"husk.git_branch", "vcs.branch",
-					"husk.agent_type", "agent.type",
+					"gen_ai.request.model",
+					"llm.model",
+					"model",
+					"tool.name",
+					"husk.tool_name",
+					"husk.input_summary",
+					"gen_ai.prompt",
+					"gen_ai.usage.input_tokens",
+					"llm.usage.prompt_tokens",
+					"gen_ai.usage.output_tokens",
+					"llm.usage.completion_tokens",
+					"gen_ai.usage.cache_read_tokens",
+					"gen_ai.usage.cache_create_tokens",
+					"process.exit_code",
+					"husk.output_size",
+					"husk.linked_trace_id",
+					"husk.span.kind",
+					"husk.project",
+					"project.name",
+					"husk.git_branch",
+					"vcs.branch",
+					"husk.agent_type",
+					"agent.type",
 				]) {
 					delete remainingAttrs[key];
 				}
@@ -301,7 +301,8 @@ otlpReceiver.post("/v1/logs", async (c) => {
 
 	// Try JSON parse
 	const buf = await c.req.arrayBuffer();
-	let body: { resourceLogs?: Array<{ scopeLogs?: Array<{ logRecords?: unknown[] }> }> } | null = null;
+	let body: { resourceLogs?: Array<{ scopeLogs?: Array<{ logRecords?: unknown[] }> }> } | null =
+		null;
 	try {
 		body = JSON.parse(new TextDecoder().decode(buf));
 	} catch {
@@ -323,7 +324,10 @@ otlpReceiver.post("/v1/logs", async (c) => {
 
 	// Convert log records to traces/spans
 	const { processLogRecords } = await import("./otlp-log-converter.js");
-	const result = await processLogRecords(records as Parameters<typeof processLogRecords>[0], provider);
+	const result = await processLogRecords(
+		records as Parameters<typeof processLogRecords>[0],
+		provider,
+	);
 
 	if (result.spans > 0 || result.traces > 0) {
 		log.info("OTLP logs: {records} records -> {spans} spans, {traces} new traces", {

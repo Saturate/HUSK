@@ -1,6 +1,7 @@
 import { getLogger } from "@logtape/logtape";
 import { Hono } from "hono";
 import { validateBearerKey } from "./auth.js";
+import { formatInsights, synthesizeInsights } from "./context.js";
 import {
 	countUncompressedObservations,
 	createObservation,
@@ -15,7 +16,6 @@ import {
 } from "./db.js";
 import type { AppEnv } from "./env.js";
 import { bus } from "./events.js";
-import { formatInsights, synthesizeInsights } from "./context.js";
 import { applyPrivacyFilters } from "./privacy.js";
 import { resolveWorkspace } from "./workspace.js";
 
@@ -179,8 +179,7 @@ sessions.post("/session-start", async (c) => {
 
 	// Append telemetry-derived insights
 	try {
-		const gitBranch =
-			typeof body.git_branch === "string" ? body.git_branch : null;
+		const gitBranch = typeof body.git_branch === "string" ? body.git_branch : null;
 		const insights = await synthesizeInsights({
 			userId: apiKey.user_id,
 			project,

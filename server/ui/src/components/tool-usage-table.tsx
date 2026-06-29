@@ -125,9 +125,7 @@ function McpGroupRows({
 				<TableCell className="text-sm font-medium">
 					<span className="mr-1 text-muted-foreground">{isExpanded ? "▾" : "▸"}</span>
 					mcp: {group.server}
-					<span className="ml-2 text-xs text-muted-foreground">
-						({group.tools.length} tools)
-					</span>
+					<span className="ml-2 text-xs text-muted-foreground">({group.tools.length} tools)</span>
 				</TableCell>
 				<TableCell className="text-right text-sm">{group.totalCalls}</TableCell>
 				<TableCell className="text-right text-sm">{group.totalFailures}</TableCell>

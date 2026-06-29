@@ -1,8 +1,8 @@
 import type { SpanRow } from "@/api";
 import { Badge } from "@/components/ui/badge";
 import { formatCost, formatDuration, formatTokens } from "@/lib/format";
-import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 const KIND_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
 	turn: "default",
@@ -51,9 +51,13 @@ export function SpanDetailPanel({ span }: { span: SpanRow }) {
 						{span.kind}
 					</Badge>
 					{span.status === "error" ? (
-						<Badge variant="destructive" className="text-xs">error</Badge>
+						<Badge variant="destructive" className="text-xs">
+							error
+						</Badge>
 					) : (
-						<Badge variant="outline" className="text-xs">ok</Badge>
+						<Badge variant="outline" className="text-xs">
+							ok
+						</Badge>
 					)}
 					{span.tool_name && (
 						<span className="text-sm text-muted-foreground">{span.tool_name}</span>
@@ -64,17 +68,24 @@ export function SpanDetailPanel({ span }: { span: SpanRow }) {
 			{/* Metadata grid */}
 			<div className="rounded-lg border p-3">
 				<MetadataRow label="Duration" value={formatDuration(span.duration_ms)} />
-				<MetadataRow label="Cost" value={span.cost_usd != null ? formatCost(span.cost_usd) : null} />
+				<MetadataRow
+					label="Cost"
+					value={span.cost_usd != null ? formatCost(span.cost_usd) : null}
+				/>
 				<MetadataRow label="Tool" value={span.tool_name} />
 				<MetadataRow label="Model" value={span.model} />
-				<MetadataRow label="Exit code" value={span.exit_code != null ? String(span.exit_code) : null} />
-				<MetadataRow label="Output size" value={span.output_size != null ? `${span.output_size} bytes` : null} />
+				<MetadataRow
+					label="Exit code"
+					value={span.exit_code != null ? String(span.exit_code) : null}
+				/>
+				<MetadataRow
+					label="Output size"
+					value={span.output_size != null ? `${span.output_size} bytes` : null}
+				/>
 				<MetadataRow label="Started" value={span.started_at} />
 				<MetadataRow label="Ended" value={span.ended_at} />
 				<MetadataRow label="Span ID" value={span.span_id} />
-				{span.parent_span_id && (
-					<MetadataRow label="Parent span" value={span.parent_span_id} />
-				)}
+				{span.parent_span_id && <MetadataRow label="Parent span" value={span.parent_span_id} />}
 			</div>
 
 			{/* Token usage */}
@@ -128,7 +139,11 @@ export function SpanDetailPanel({ span }: { span: SpanRow }) {
 						className="flex items-center gap-1 text-sm font-medium hover:text-foreground text-muted-foreground"
 						onClick={() => setShowAttrs(!showAttrs)}
 					>
-						{showAttrs ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+						{showAttrs ? (
+							<ChevronDown className="h-3.5 w-3.5" />
+						) : (
+							<ChevronRight className="h-3.5 w-3.5" />
+						)}
 						Attributes
 					</button>
 					{showAttrs && (

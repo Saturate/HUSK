@@ -1,4 +1,4 @@
-import { api, type SpanRow } from "@/api";
+import { type SpanRow, api } from "@/api";
 import { AppLayout } from "@/components/layout";
 import { SpanDetailPanel } from "@/components/span-detail-panel";
 import { SpanTree } from "@/components/span-tree";
@@ -43,7 +43,7 @@ export function TraceDetailPage() {
 
 	const { trace, spans } = query.data;
 	const selectedSpan = selectedSpanId
-		? spans.find((s: SpanRow) => s.span_id === selectedSpanId) ?? null
+		? (spans.find((s: SpanRow) => s.span_id === selectedSpanId) ?? null)
 		: null;
 
 	return (
@@ -58,24 +58,19 @@ export function TraceDetailPage() {
 				</Button>
 
 				<div className="flex flex-wrap items-center gap-2">
-					{trace.project && (
-						<Badge variant="outline">{trace.project}</Badge>
-					)}
+					{trace.project && <Badge variant="outline">{trace.project}</Badge>}
 					{trace.model && (
-						<span className="text-sm text-muted-foreground font-mono">
-							{trace.model}
-						</span>
+						<span className="text-sm text-muted-foreground font-mono">{trace.model}</span>
 					)}
 					<Badge variant={trace.status === "active" ? "default" : "secondary"}>
 						{trace.status}
 					</Badge>
 					<span className="text-sm font-medium">{formatCost(trace.total_cost_usd)}</span>
 					<span className="text-sm text-muted-foreground">
-						{formatTokens(trace.total_input_tokens)} in / {formatTokens(trace.total_output_tokens)} out
+						{formatTokens(trace.total_input_tokens)} in / {formatTokens(trace.total_output_tokens)}{" "}
+						out
 					</span>
-					<span className="text-sm text-muted-foreground">
-						{trace.total_turns} turns
-					</span>
+					<span className="text-sm text-muted-foreground">{trace.total_turns} turns</span>
 					<span className="text-sm text-muted-foreground">
 						{new Date(trace.started_at).toLocaleString()}
 					</span>
@@ -99,9 +94,7 @@ export function TraceDetailPage() {
 						<SpanDetailPanel span={selectedSpan} />
 					) : (
 						<div className="flex h-full items-center justify-center">
-							<p className="text-sm text-muted-foreground">
-								Select a span to view details
-							</p>
+							<p className="text-sm text-muted-foreground">Select a span to view details</p>
 						</div>
 					)}
 				</div>

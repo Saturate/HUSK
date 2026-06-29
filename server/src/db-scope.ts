@@ -46,7 +46,13 @@ export class UserScope {
 		return listMemories({ ...opts, userId: this.userId });
 	}
 
-	countMemories(opts?: { gitRemote?: string; scope?: string; memoryType?: string; path?: string; includeDeleted?: boolean }): number {
+	countMemories(opts?: {
+		gitRemote?: string;
+		scope?: string;
+		memoryType?: string;
+		path?: string;
+		includeDeleted?: boolean;
+	}): number {
 		return countMemories({ ...opts, userId: this.userId });
 	}
 

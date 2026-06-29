@@ -1,4 +1,4 @@
-import { api, type ModelDetail } from "@/api";
+import { type ModelDetail, api } from "@/api";
 import { AppLayout } from "@/components/layout";
 import {
 	Table,
@@ -61,12 +61,18 @@ function groupIntoFamilies(models: ModelDetail[]): ModelFamily[] {
 			cache_hit_rate: 0,
 		};
 		if (combined.total_turns > 0) {
-			combined.avg_output_per_turn = Math.round(combined.total_output_tokens / combined.total_turns);
+			combined.avg_output_per_turn = Math.round(
+				combined.total_output_tokens / combined.total_turns,
+			);
 			combined.avg_input_per_turn = Math.round(combined.total_input_tokens / combined.total_turns);
 			combined.avg_cost_per_turn = combined.total_cost_usd / combined.total_turns;
 		}
-		const totalCacheBase = combined.total_cache_read_tokens + combined.total_cache_create_tokens + combined.total_input_tokens;
-		combined.cache_hit_rate = totalCacheBase > 0 ? combined.total_cache_read_tokens / totalCacheBase : 0;
+		const totalCacheBase =
+			combined.total_cache_read_tokens +
+			combined.total_cache_create_tokens +
+			combined.total_input_tokens;
+		combined.cache_hit_rate =
+			totalCacheBase > 0 ? combined.total_cache_read_tokens / totalCacheBase : 0;
 
 		families.push({
 			family,
@@ -97,7 +103,9 @@ function ComparisonChart({
 
 	return (
 		<div className="mb-8">
-			<h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wider">{title}</h3>
+			<h3 className="mb-3 text-sm font-medium text-muted-foreground uppercase tracking-wider">
+				{title}
+			</h3>
 			<div className="space-y-1">
 				{families.map((f) => {
 					const val = getValue(f.combined);
@@ -106,7 +114,10 @@ function ComparisonChart({
 						<div key={f.family}>
 							{/* Family bar */}
 							<div className="flex items-center gap-3">
-								<div className="w-28 shrink-0 truncate text-right text-sm font-medium" title={f.family}>
+								<div
+									className="w-28 shrink-0 truncate text-right text-sm font-medium"
+									title={f.family}
+								>
 									{f.family}
 								</div>
 								<div className="flex-1">
@@ -117,40 +128,51 @@ function ComparisonChart({
 												style={{ width: `${pct}%`, minWidth: pct > 0 ? "2px" : "0" }}
 											>
 												{pct > 20 && (
-													<span className="px-2 text-xs font-semibold text-white">{formatFn(val)}</span>
+													<span className="px-2 text-xs font-semibold text-white">
+														{formatFn(val)}
+													</span>
 												)}
 											</div>
 										</div>
 										{pct <= 20 && (
-											<span className="shrink-0 text-xs text-muted-foreground">{formatFn(val)}</span>
+											<span className="shrink-0 text-xs text-muted-foreground">
+												{formatFn(val)}
+											</span>
 										)}
 									</div>
 								</div>
 							</div>
 							{/* Variant sub-bars */}
-							{showVariants && f.variants.length > 1 && f.variants.map((v) => {
-								const vval = getValue(v);
-								const vpct = (vval / max) * 100;
-								const label = v.model.replace("claude-", "");
-								return (
-									<div key={v.model} className="flex items-center gap-3 ml-4">
-										<div className="w-24 shrink-0 truncate text-right text-xs text-muted-foreground" title={v.model}>
-											{label}
-										</div>
-										<div className="flex-1">
-											<div className="flex items-center gap-2">
-												<div className="h-3.5 flex-1 overflow-hidden rounded bg-muted">
-													<div
-														className={`h-full rounded ${f.color} opacity-60`}
-														style={{ width: `${vpct}%`, minWidth: vpct > 0 ? "2px" : "0" }}
-													/>
+							{showVariants &&
+								f.variants.length > 1 &&
+								f.variants.map((v) => {
+									const vval = getValue(v);
+									const vpct = (vval / max) * 100;
+									const label = v.model.replace("claude-", "");
+									return (
+										<div key={v.model} className="flex items-center gap-3 ml-4">
+											<div
+												className="w-24 shrink-0 truncate text-right text-xs text-muted-foreground"
+												title={v.model}
+											>
+												{label}
+											</div>
+											<div className="flex-1">
+												<div className="flex items-center gap-2">
+													<div className="h-3.5 flex-1 overflow-hidden rounded bg-muted">
+														<div
+															className={`h-full rounded ${f.color} opacity-60`}
+															style={{ width: `${vpct}%`, minWidth: vpct > 0 ? "2px" : "0" }}
+														/>
+													</div>
+													<span className="shrink-0 text-xs text-muted-foreground">
+														{formatFn(vval)}
+													</span>
 												</div>
-												<span className="shrink-0 text-xs text-muted-foreground">{formatFn(vval)}</span>
 											</div>
 										</div>
-									</div>
-								);
-							})}
+									);
+								})}
 						</div>
 					);
 				})}
@@ -186,6 +208,7 @@ export function ModelsPage() {
 					<div className="mb-10 rounded-lg border bg-card p-6">
 						<div className="mb-4 flex items-center justify-end">
 							<button
+								type="button"
 								onClick={() => setShowVariants(!showVariants)}
 								className="text-xs text-muted-foreground hover:text-foreground transition-colors"
 							>
@@ -194,25 +217,29 @@ export function ModelsPage() {
 						</div>
 						<ComparisonChart
 							title="Output tokens per turn"
-							families={families} showVariants={showVariants}
+							families={families}
+							showVariants={showVariants}
 							getValue={(m) => m.avg_output_per_turn}
-							formatFn={(n) => formatTokens(n) + " tok"}
+							formatFn={(n) => `${formatTokens(n)} tok`}
 						/>
 						<ComparisonChart
 							title="Cost per turn"
-							families={families} showVariants={showVariants}
+							families={families}
+							showVariants={showVariants}
 							getValue={(m) => m.avg_cost_per_turn}
 							formatFn={formatCost}
 						/>
 						<ComparisonChart
 							title="Cache hit rate"
-							families={families} showVariants={showVariants}
+							families={families}
+							showVariants={showVariants}
 							getValue={(m) => m.cache_hit_rate * 100}
 							formatFn={(n) => `${n.toFixed(1)}%`}
 						/>
 						<ComparisonChart
 							title="Total cost"
-							families={families} showVariants={showVariants}
+							families={families}
+							showVariants={showVariants}
 							getValue={(m) => m.total_cost_usd}
 							formatFn={formatCost}
 						/>
@@ -248,9 +275,15 @@ function ModelTable({ models }: { models: ModelDetail[] }) {
 							<TableCell className="text-sm font-medium">{m.model}</TableCell>
 							<TableCell className="text-right text-sm">{m.session_count}</TableCell>
 							<TableCell className="text-right text-sm">{m.total_turns.toLocaleString()}</TableCell>
-							<TableCell className="text-right text-sm font-medium">{formatTokens(m.avg_output_per_turn)}</TableCell>
-							<TableCell className="text-right text-sm">{formatTokens(m.avg_input_per_turn)}</TableCell>
-							<TableCell className="text-right text-sm">{formatCost(m.avg_cost_per_turn)}</TableCell>
+							<TableCell className="text-right text-sm font-medium">
+								{formatTokens(m.avg_output_per_turn)}
+							</TableCell>
+							<TableCell className="text-right text-sm">
+								{formatTokens(m.avg_input_per_turn)}
+							</TableCell>
+							<TableCell className="text-right text-sm">
+								{formatCost(m.avg_cost_per_turn)}
+							</TableCell>
 							<TableCell className="text-right text-sm">{formatCost(m.total_cost_usd)}</TableCell>
 							<TableCell className="text-right text-sm">
 								{m.cache_hit_rate ? `${(m.cache_hit_rate * 100).toFixed(1)}%` : "n/a"}

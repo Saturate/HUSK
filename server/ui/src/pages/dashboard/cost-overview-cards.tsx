@@ -24,9 +24,7 @@ export function CostOverviewCards() {
 				label="This week"
 				value={overview ? formatCost(overview.week.cost) : "..."}
 				subtitle={
-					overview
-						? `${overview.week.sessions} sessions, ${overview.week.turns} turns`
-						: undefined
+					overview ? `${overview.week.sessions} sessions, ${overview.week.turns} turns` : undefined
 				}
 			/>
 			<StatCard

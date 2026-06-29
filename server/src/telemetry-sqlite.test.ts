@@ -125,8 +125,20 @@ describe("SqliteTelemetryProvider", () => {
 
 		test("getSpansForTrace filters by kind", async () => {
 			await telemetry.startTrace({ traceId: "sp-t3", apiKeyId });
-			await telemetry.createSpan({ traceId: "sp-t3", spanId: "x", name: "turn/1", kind: "turn", startedAt: "2026-01-01T00:00:00Z" });
-			await telemetry.createSpan({ traceId: "sp-t3", spanId: "y", name: "tool/Bash", kind: "tool", startedAt: "2026-01-01T00:00:01Z" });
+			await telemetry.createSpan({
+				traceId: "sp-t3",
+				spanId: "x",
+				name: "turn/1",
+				kind: "turn",
+				startedAt: "2026-01-01T00:00:00Z",
+			});
+			await telemetry.createSpan({
+				traceId: "sp-t3",
+				spanId: "y",
+				name: "tool/Bash",
+				kind: "tool",
+				startedAt: "2026-01-01T00:00:01Z",
+			});
 
 			const tools = await telemetry.getSpansForTrace("sp-t3", "tool");
 			expect(tools.length).toBe(1);
@@ -135,7 +147,13 @@ describe("SqliteTelemetryProvider", () => {
 
 		test("updateSpan modifies fields", async () => {
 			await telemetry.startTrace({ traceId: "sp-t4", apiKeyId });
-			await telemetry.createSpan({ traceId: "sp-t4", spanId: "upd", name: "tool/Bash", kind: "tool", startedAt: "2026-01-01T00:00:00Z" });
+			await telemetry.createSpan({
+				traceId: "sp-t4",
+				spanId: "upd",
+				name: "tool/Bash",
+				kind: "tool",
+				startedAt: "2026-01-01T00:00:00Z",
+			});
 
 			await telemetry.updateSpan("upd", { status: "error", durationMs: 500, exitCode: 1 });
 
@@ -158,11 +176,43 @@ describe("SqliteTelemetryProvider", () => {
 			await telemetry.endTrace("agg3", { totalCostUsd: 7.0, totalTurns: 4 });
 
 			// Add tool spans for tool stats
-			await telemetry.createSpan({ traceId: "agg1", spanId: "tool1", name: "tool/Bash", kind: "tool", startedAt: "2026-01-01T00:00:00Z", toolName: "Bash", durationMs: 100 });
-			await telemetry.createSpan({ traceId: "agg1", spanId: "tool2", name: "tool/Bash", kind: "tool", startedAt: "2026-01-01T00:00:01Z", toolName: "Bash", durationMs: 200 });
-			await telemetry.createSpan({ traceId: "agg1", spanId: "tool3", name: "tool/Edit", kind: "tool", startedAt: "2026-01-01T00:00:02Z", toolName: "Edit", durationMs: 50 });
+			await telemetry.createSpan({
+				traceId: "agg1",
+				spanId: "tool1",
+				name: "tool/Bash",
+				kind: "tool",
+				startedAt: "2026-01-01T00:00:00Z",
+				toolName: "Bash",
+				durationMs: 100,
+			});
+			await telemetry.createSpan({
+				traceId: "agg1",
+				spanId: "tool2",
+				name: "tool/Bash",
+				kind: "tool",
+				startedAt: "2026-01-01T00:00:01Z",
+				toolName: "Bash",
+				durationMs: 200,
+			});
+			await telemetry.createSpan({
+				traceId: "agg1",
+				spanId: "tool3",
+				name: "tool/Edit",
+				kind: "tool",
+				startedAt: "2026-01-01T00:00:02Z",
+				toolName: "Edit",
+				durationMs: 50,
+			});
 			// One error
-			await telemetry.createSpan({ traceId: "agg1", spanId: "tool4", name: "tool/Bash", kind: "tool", startedAt: "2026-01-01T00:00:03Z", toolName: "Bash", durationMs: 300 });
+			await telemetry.createSpan({
+				traceId: "agg1",
+				spanId: "tool4",
+				name: "tool/Bash",
+				kind: "tool",
+				startedAt: "2026-01-01T00:00:03Z",
+				toolName: "Bash",
+				durationMs: 300,
+			});
 			await telemetry.updateSpan("tool4", { status: "error" });
 		}
 

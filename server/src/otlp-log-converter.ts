@@ -1,7 +1,7 @@
-import { getLogger } from "@logtape/logtape";
 import { existsSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import { homedir } from "node:os";
+import { join } from "node:path";
+import { getLogger } from "@logtape/logtape";
 import { getDb } from "./db.js";
 import type { TelemetryProvider } from "./telemetry.js";
 
@@ -14,7 +14,12 @@ interface OtlpLogRecord {
 	body?: { stringValue?: string };
 	attributes?: Array<{
 		key: string;
-		value: { stringValue?: string; intValue?: string | number; doubleValue?: number; boolValue?: boolean };
+		value: {
+			stringValue?: string;
+			intValue?: string | number;
+			doubleValue?: number;
+			boolValue?: boolean;
+		};
 	}>;
 }
 
@@ -97,13 +102,16 @@ function resolveProjectFromTranscript(sessionId: string): string | null {
 					projectParts = [parts[parts.length - 1] ?? dirName];
 				}
 				// Skip common parent dirs that aren't the project name (github, code)
-				if (projectParts[0] === "github" && projectParts.length > 1) projectParts = projectParts.slice(1);
+				if (projectParts[0] === "github" && projectParts.length > 1)
+					projectParts = projectParts.slice(1);
 				const project = projectParts[projectParts.length - 1] ?? dirName;
 				sessionProjectCache.set(sessionId, project);
 				return project;
 			}
 		}
-	} catch { /* best effort */ }
+	} catch {
+		/* best effort */
+	}
 
 	sessionProjectCache.set(sessionId, null);
 	return null;
@@ -122,9 +130,15 @@ function extractToolInput(params: unknown): string | null {
 		const p = typeof params === "string" ? JSON.parse(params) : params;
 		if (typeof p === "object" && p !== null) {
 			const obj = p as Record<string, unknown>;
-			return (obj.full_command as string) ?? (obj.description as string) ?? JSON.stringify(p).slice(0, 2000);
+			return (
+				(obj.full_command as string) ??
+				(obj.description as string) ??
+				JSON.stringify(p).slice(0, 2000)
+			);
 		}
-	} catch { /* not JSON */ }
+	} catch {
+		/* not JSON */
+	}
 	return typeof params === "string" ? params.slice(0, 2000) : null;
 }
 
@@ -147,7 +161,10 @@ export async function processLogRecords(
 		if (!sessionId) continue;
 
 		const traceId = generateTraceId(sessionId);
-		const timestamp = nanoToIso(record.timeUnixNano) ?? (attrs["event.timestamp"] as string) ?? new Date().toISOString();
+		const timestamp =
+			nanoToIso(record.timeUnixNano) ??
+			(attrs["event.timestamp"] as string) ??
+			new Date().toISOString();
 
 		// Auto-create trace on first event for this session
 		if (!seenSessions.has(sessionId)) {
@@ -176,7 +193,8 @@ export async function processLogRecords(
 			const gap = new Date(timestamp).getTime() - new Date(lastTime).getTime();
 			if (gap > PAUSE_THRESHOLD_MS) {
 				const pauseMins = Math.round(gap / 60_000);
-				const pauseLabel = pauseMins >= 60 ? `${Math.floor(pauseMins / 60)}h ${pauseMins % 60}m` : `${pauseMins}m`;
+				const pauseLabel =
+					pauseMins >= 60 ? `${Math.floor(pauseMins / 60)}h ${pauseMins % 60}m` : `${pauseMins}m`;
 				try {
 					await provider.createSpan({
 						traceId,
@@ -189,7 +207,9 @@ export async function processLogRecords(
 						attributes: { pause: true, gap_minutes: pauseMins },
 					});
 					spanCount++;
-				} catch { /* best effort */ }
+				} catch {
+					/* best effort */
+				}
 			}
 		}
 		if (timestamp) lastEventTime.set(sessionId, timestamp);
@@ -200,7 +220,8 @@ export async function processLogRecords(
 				const inputTokens = attrs.input_tokens != null ? Number(attrs.input_tokens) : null;
 				const outputTokens = attrs.output_tokens != null ? Number(attrs.output_tokens) : null;
 				const cacheRead = attrs.cache_read_tokens != null ? Number(attrs.cache_read_tokens) : null;
-				const cacheCreate = attrs.cache_creation_tokens != null ? Number(attrs.cache_creation_tokens) : null;
+				const cacheCreate =
+					attrs.cache_creation_tokens != null ? Number(attrs.cache_creation_tokens) : null;
 				const costUsd = attrs.cost_usd != null ? Number(attrs.cost_usd) : null;
 				const durationMs = attrs.duration_ms != null ? Number(attrs.duration_ms) : null;
 
@@ -318,7 +339,9 @@ export async function processLogRecords(
 				spanCount++;
 
 				// Rolling tool count on trace
-				getDb().query("UPDATE traces SET total_tool_calls = total_tool_calls + 1 WHERE trace_id = ?").run(pending?.traceId ?? traceId);
+				getDb()
+					.query("UPDATE traces SET total_tool_calls = total_tool_calls + 1 WHERE trace_id = ?")
+					.run(pending?.traceId ?? traceId);
 
 				break;
 			}

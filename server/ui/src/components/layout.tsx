@@ -1,5 +1,5 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AppSidebar, SidebarProvider, useSidebar } from "@/components/sidebar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
@@ -45,6 +45,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
 				{/* Mobile header */}
 				<header className="flex h-12 shrink-0 items-center gap-3 border-b px-4 md:hidden">
 					<button
+						type="button"
 						onClick={toggle}
 						className="rounded-md p-1 hover:bg-accent"
 						aria-label="Toggle sidebar"
@@ -54,10 +55,7 @@ function AppLayoutInner({ children }: { children: ReactNode }) {
 					<span className="text-sm font-semibold">HUSK</span>
 				</header>
 
-				<main
-					id="main-content"
-					className={cn("flex-1 overflow-y-auto p-6")}
-				>
+				<main id="main-content" className={cn("flex-1 overflow-y-auto p-6")}>
 					<div className="mx-auto max-w-6xl">{children}</div>
 				</main>
 			</div>

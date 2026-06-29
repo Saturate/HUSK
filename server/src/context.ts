@@ -33,8 +33,7 @@ export async function synthesizeInsights(params: {
 			const todayEntry = dailyCosts.find((d) => d.date === today);
 			const pastDays = dailyCosts.filter((d) => d.date !== today);
 			if (todayEntry && pastDays.length > 0) {
-				const avgCost =
-					pastDays.reduce((sum, d) => sum + d.total_cost_usd, 0) / pastDays.length;
+				const avgCost = pastDays.reduce((sum, d) => sum + d.total_cost_usd, 0) / pastDays.length;
 				if (avgCost > 0 && todayEntry.total_cost_usd > avgCost * 3) {
 					insights.push({
 						type: "cost_alert",
@@ -58,14 +57,9 @@ export async function synthesizeInsights(params: {
 
 		// Branch context: previous sessions on the same branch
 		if (params.gitBranch) {
-			const branchTraces = recentTraces.filter(
-				(t) => t.git_branch === params.gitBranch,
-			);
+			const branchTraces = recentTraces.filter((t) => t.git_branch === params.gitBranch);
 			if (branchTraces.length > 0) {
-				const totalCost = branchTraces.reduce(
-					(sum, t) => sum + t.total_cost_usd,
-					0,
-				);
+				const totalCost = branchTraces.reduce((sum, t) => sum + t.total_cost_usd, 0);
 				insights.push({
 					type: "branch_context",
 					severity: "info",
@@ -102,8 +96,6 @@ export async function synthesizeInsights(params: {
 
 export function formatInsights(insights: ContextInsight[]): string {
 	if (insights.length === 0) return "";
-	const lines = insights.map(
-		(i) => `- ${i.severity === "warning" ? "[!] " : ""}${i.message}`,
-	);
+	const lines = insights.map((i) => `- ${i.severity === "warning" ? "[!] " : ""}${i.message}`);
 	return `\n\nSession insights:\n${lines.join("\n")}`;
 }

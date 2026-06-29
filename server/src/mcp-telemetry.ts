@@ -2,7 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getDb } from "./db.js";
 import { scanRecentTraces } from "./secret-scanner.js";
-import { getKnowledgeSpans, compressTrace } from "./span-compression.js";
+import { compressTrace, getKnowledgeSpans } from "./span-compression.js";
 import type { SpanRow, TelemetryProvider, TraceRow } from "./telemetry.js";
 
 function buildDateRange(
@@ -238,7 +238,9 @@ export function registerTelemetryTools(server: McpServer, telemetry: TelemetryPr
 					}
 					toolCounts[span.tool_name] = entry;
 				} else if (span.kind === "subagent") {
-					const attrs = span.attributes ? JSON.parse(span.attributes) as Record<string, unknown> : {};
+					const attrs = span.attributes
+						? (JSON.parse(span.attributes) as Record<string, unknown>)
+						: {};
 					subagents.push({
 						type: (attrs.agent_type as string) ?? "unknown",
 						name: span.name,
@@ -279,14 +281,8 @@ export function registerTelemetryTools(server: McpServer, telemetry: TelemetryPr
 					.enum(["prompt", "tool", "subagent", "skill"])
 					.optional()
 					.describe("Filter by span kind"),
-				tool_name: z
-					.string()
-					.optional()
-					.describe("Filter by tool name (e.g. 'Bash', 'Edit')"),
-				status: z
-					.enum(["ok", "error"])
-					.optional()
-					.describe("Filter by status"),
+				tool_name: z.string().optional().describe("Filter by tool name (e.g. 'Bash', 'Edit')"),
+				status: z.enum(["ok", "error"]).optional().describe("Filter by status"),
 				limit: z.number().int().min(1).max(100).optional().describe("Max spans (default 20)"),
 			},
 		},
@@ -322,7 +318,13 @@ export function registerTelemetryTools(server: McpServer, telemetry: TelemetryPr
 			description:
 				"Scan recent session traces for leaked secrets (API keys, tokens, passwords, connection strings). Uses trufflehog if available (800+ patterns with verification), falls back to builtin regex patterns.",
 			inputSchema: {
-				limit: z.number().int().min(1).max(200).optional().describe("Number of recent traces to scan (default 50)"),
+				limit: z
+					.number()
+					.int()
+					.min(1)
+					.max(200)
+					.optional()
+					.describe("Number of recent traces to scan (default 50)"),
 			},
 		},
 		async (args) => {

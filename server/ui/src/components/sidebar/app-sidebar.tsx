@@ -46,6 +46,7 @@ export function AppSidebar() {
 			</div>
 
 			{/* Navigation */}
+			{/* biome-ignore lint/a11y/useKeyWithClickEvents: mobile sidebar close on nav click */}
 			<nav className="flex-1 overflow-y-auto py-3 space-y-4" onClick={isMobile ? close : undefined}>
 				<SidebarGroup label="Home">
 					<SidebarItem icon={LayoutDashboard} to="/dashboard" label="Dashboard" />
@@ -87,6 +88,7 @@ export function AppSidebar() {
 					</div>
 					<span className="flex-1 truncate text-sm">{username}</span>
 					<button
+						type="button"
 						onClick={logout}
 						className="rounded-md p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
 						title="Log out"

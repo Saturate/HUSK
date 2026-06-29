@@ -1,5 +1,4 @@
 import { api } from "@/api";
-import { formatCost, formatTokens } from "@/lib/format";
 import {
 	Table,
 	TableBody,
@@ -8,6 +7,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { formatCost, formatTokens } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 
 export function ModelsSection() {
@@ -40,9 +40,7 @@ export function ModelsSection() {
 						{data?.map((m) => (
 							<TableRow key={m.model}>
 								<TableCell className="text-sm font-medium">{m.model}</TableCell>
-								<TableCell className="text-right text-sm">
-									{formatCost(m.total_cost_usd)}
-								</TableCell>
+								<TableCell className="text-right text-sm">{formatCost(m.total_cost_usd)}</TableCell>
 								<TableCell className="text-right text-sm text-muted-foreground">
 									{m.session_count}
 								</TableCell>

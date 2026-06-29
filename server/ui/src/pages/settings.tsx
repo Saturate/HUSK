@@ -75,16 +75,44 @@ export function SettingsPage() {
 											className="flex items-center gap-3 px-3 py-2"
 											style={{ borderBottom: `1px solid ${border}` }}
 										>
-											<span className="text-xs font-semibold" style={{ color: fg, fontFamily: t.dark["font-sans"] }}>HUSK</span>
-											<span className="rounded px-1.5 py-0.5 text-[10px]" style={{ backgroundColor: accent, color: fg }}>Dashboard</span>
+											<span
+												className="text-xs font-semibold"
+												style={{ color: fg, fontFamily: t.dark["font-sans"] }}
+											>
+												HUSK
+											</span>
+											<span
+												className="rounded px-1.5 py-0.5 text-[10px]"
+												style={{ backgroundColor: accent, color: fg }}
+											>
+												Dashboard
+											</span>
 										</div>
 										<div className="flex gap-2 p-3">
-											<div className="flex-1 rounded px-2 py-1.5" style={{ backgroundColor: card, border: `1px solid ${border}` }}>
-												<span className="block text-[9px]" style={{ color: muted }}>Memories</span>
-												<span className="text-sm font-bold" style={{ color: fg, fontFamily: t.dark["font-sans"] }}>16</span>
+											<div
+												className="flex-1 rounded px-2 py-1.5"
+												style={{ backgroundColor: card, border: `1px solid ${border}` }}
+											>
+												<span className="block text-[9px]" style={{ color: muted }}>
+													Memories
+												</span>
+												<span
+													className="text-sm font-bold"
+													style={{ color: fg, fontFamily: t.dark["font-sans"] }}
+												>
+													16
+												</span>
 											</div>
-											<div className="flex-1 rounded px-2 py-1.5" style={{ backgroundColor: primary }}>
-												<span className="block text-[9px]" style={{ color: t.dark["primary-foreground"] }}>Primary</span>
+											<div
+												className="flex-1 rounded px-2 py-1.5"
+												style={{ backgroundColor: primary }}
+											>
+												<span
+													className="block text-[9px]"
+													style={{ color: t.dark["primary-foreground"] }}
+												>
+													Primary
+												</span>
 											</div>
 										</div>
 									</div>
@@ -180,7 +208,9 @@ function SessionCaptureSettings() {
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="anthropic">Anthropic (direct API)</SelectItem>
-										<SelectItem value="openrouter">OpenAI-compatible (OpenRouter, llama.cpp, vLLM, etc.)</SelectItem>
+										<SelectItem value="openrouter">
+											OpenAI-compatible (OpenRouter, llama.cpp, vLLM, etc.)
+										</SelectItem>
 										<SelectItem value="ollama">Ollama</SelectItem>
 									</SelectContent>
 								</Select>
@@ -231,7 +261,7 @@ function SessionCaptureSettings() {
 										placeholder={
 											(settings.compression_provider ?? "anthropic") === "ollama"
 												? "llama3.2"
-												: settings.compression_model ?? "claude-haiku-4-5-20251001"
+												: (settings.compression_model ?? "claude-haiku-4-5-20251001")
 										}
 										value={compressionModel}
 										onChange={(e) => setCompressionModel(e.target.value)}

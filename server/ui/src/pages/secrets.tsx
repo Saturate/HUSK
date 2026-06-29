@@ -83,17 +83,31 @@ export function SecretsPage() {
 					<h2 className="text-2xl font-semibold">Secret Scanning</h2>
 					<p className="text-sm text-muted-foreground">
 						Cached results from trufflehog. Rescan to check for new findings.
-						{data?.last_scan && <span className="ml-2">Last scan: {new Date(data.last_scan).toLocaleString()}</span>}
+						{data?.last_scan && (
+							<span className="ml-2">Last scan: {new Date(data.last_scan).toLocaleString()}</span>
+						)}
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
-					<Button onClick={() => rescanMutation.mutate(50)} disabled={rescanMutation.isPending} variant="outline" size="sm">
+					<Button
+						onClick={() => rescanMutation.mutate(50)}
+						disabled={rescanMutation.isPending}
+						variant="outline"
+						size="sm"
+					>
 						Quick scan
 					</Button>
-					<Button onClick={() => rescanMutation.mutate(9999)} disabled={rescanMutation.isPending} variant="outline" size="sm">
+					<Button
+						onClick={() => rescanMutation.mutate(9999)}
+						disabled={rescanMutation.isPending}
+						variant="outline"
+						size="sm"
+					>
 						Full scan
 					</Button>
-					{rescanMutation.isPending && <span className="text-xs text-muted-foreground">Scanning...</span>}
+					{rescanMutation.isPending && (
+						<span className="text-xs text-muted-foreground">Scanning...</span>
+					)}
 				</div>
 			</div>
 
@@ -138,7 +152,9 @@ export function SecretsPage() {
 										>
 											{r.project ?? r.trace_id.slice(0, 16)}
 										</Link>
-										<Badge variant="destructive">{r.finding_count} finding{r.finding_count > 1 ? "s" : ""}</Badge>
+										<Badge variant="destructive">
+											{r.finding_count} finding{r.finding_count > 1 ? "s" : ""}
+										</Badge>
 									</div>
 									<Table>
 										<TableHeader>
@@ -155,7 +171,9 @@ export function SecretsPage() {
 												<TableRow key={`${f.span_id}-${i}`}>
 													<TableCell className="text-sm font-medium">{f.secret_type}</TableCell>
 													<TableCell className="font-mono text-xs">{f.redacted_match}</TableCell>
-													<TableCell className="text-sm text-muted-foreground">{f.tool_name ?? f.span_name}</TableCell>
+													<TableCell className="text-sm text-muted-foreground">
+														{f.tool_name ?? f.span_name}
+													</TableCell>
 													<TableCell>
 														{f.verified ? (
 															<Badge variant="destructive">Verified</Badge>
@@ -163,7 +181,9 @@ export function SecretsPage() {
 															<span className="text-xs text-muted-foreground">unverified</span>
 														)}
 													</TableCell>
-													<TableCell className="text-xs text-muted-foreground">{f.started_at?.slice(0, 16)}</TableCell>
+													<TableCell className="text-xs text-muted-foreground">
+														{f.started_at?.slice(0, 16)}
+													</TableCell>
 												</TableRow>
 											))}
 										</TableBody>
@@ -178,11 +198,17 @@ export function SecretsPage() {
 	);
 }
 
-function SummaryCard({ label, value, variant }: { label: string; value: string; variant?: "default" | "destructive" }) {
+function SummaryCard({
+	label,
+	value,
+	variant,
+}: { label: string; value: string; variant?: "default" | "destructive" }) {
 	return (
 		<div className="rounded-lg border bg-card p-3">
 			<div className="text-xs text-muted-foreground">{label}</div>
-			<div className={`text-lg font-semibold ${variant === "destructive" ? "text-destructive" : ""}`}>
+			<div
+				className={`text-lg font-semibold ${variant === "destructive" ? "text-destructive" : ""}`}
+			>
 				{value}
 			</div>
 		</div>

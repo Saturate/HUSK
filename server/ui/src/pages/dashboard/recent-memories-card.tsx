@@ -43,9 +43,7 @@ export function RecentMemoriesCard() {
 						<TableBody>
 							{memories.map((m) => (
 								<TableRow key={m.id}>
-									<TableCell className="max-w-xs truncate font-medium">
-										{m.summary}
-									</TableCell>
+									<TableCell className="max-w-xs truncate font-medium">{m.summary}</TableCell>
 									<TableCell className="text-sm text-muted-foreground">
 										{m.git_remote ?? "—"}
 									</TableCell>

@@ -1,4 +1,4 @@
-import { api, type ProjectCost } from "@/api";
+import { type ProjectCost, api } from "@/api";
 import { AppLayout } from "@/components/layout";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,14 +41,13 @@ const columns: ColumnDef<ProjectCost>[] = [
 	{
 		accessorKey: "project",
 		header: "Project",
-		cell: ({ row }) => (
-			<span className="font-medium">{row.getValue("project")}</span>
-		),
+		cell: ({ row }) => <span className="font-medium">{row.getValue("project")}</span>,
 	},
 	{
 		accessorKey: "total_cost_usd",
 		header: ({ column }) => (
 			<button
+				type="button"
 				className="flex items-center gap-1 ml-auto"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
@@ -63,6 +62,7 @@ const columns: ColumnDef<ProjectCost>[] = [
 		accessorKey: "session_count",
 		header: ({ column }) => (
 			<button
+				type="button"
 				className="flex items-center gap-1 ml-auto"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
@@ -77,6 +77,7 @@ const columns: ColumnDef<ProjectCost>[] = [
 		accessorKey: "total_turns",
 		header: ({ column }) => (
 			<button
+				type="button"
 				className="flex items-center gap-1 ml-auto"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
@@ -93,6 +94,7 @@ const columns: ColumnDef<ProjectCost>[] = [
 		accessorKey: "last_active",
 		header: ({ column }) => (
 			<button
+				type="button"
 				className="flex items-center gap-1 ml-auto"
 				onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
 			>
@@ -100,9 +102,7 @@ const columns: ColumnDef<ProjectCost>[] = [
 			</button>
 		),
 		cell: ({ row }) => (
-			<div className="text-right text-muted-foreground">
-				{timeAgo(row.getValue("last_active"))}
-			</div>
+			<div className="text-right text-muted-foreground">{timeAgo(row.getValue("last_active"))}</div>
 		),
 		sortingFn: (a, b) => {
 			const aVal = a.getValue("last_active") as string | null;
@@ -117,9 +117,7 @@ const columns: ColumnDef<ProjectCost>[] = [
 
 export function ProjectsPage() {
 	const navigate = useNavigate();
-	const [sorting, setSorting] = useState<SortingState>([
-		{ id: "last_active", desc: true },
-	]);
+	const [sorting, setSorting] = useState<SortingState>([{ id: "last_active", desc: true }]);
 	const [globalFilter, setGlobalFilter] = useState("");
 
 	const { data, isLoading } = useQuery({

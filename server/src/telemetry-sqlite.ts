@@ -209,9 +209,8 @@ export class SqliteTelemetryProvider implements TelemetryProvider {
 
 	async getTrace(traceId: string): Promise<TraceRow | null> {
 		return (
-			getDb()
-				.query<TraceRow, [string]>("SELECT * FROM traces WHERE trace_id = ?")
-				.get(traceId) ?? null
+			getDb().query<TraceRow, [string]>("SELECT * FROM traces WHERE trace_id = ?").get(traceId) ??
+			null
 		);
 	}
 
@@ -265,9 +264,7 @@ export class SqliteTelemetryProvider implements TelemetryProvider {
 				.all(traceId, kind);
 		}
 		return getDb()
-			.query<SpanRow, [string]>(
-				"SELECT * FROM spans WHERE trace_id = ? ORDER BY started_at ASC",
-			)
+			.query<SpanRow, [string]>("SELECT * FROM spans WHERE trace_id = ? ORDER BY started_at ASC")
 			.all(traceId);
 	}
 

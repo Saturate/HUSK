@@ -9,7 +9,10 @@ import { initLogging } from "./logger.js";
 import { initRetentionSweeper } from "./retention.js";
 import { initStorage } from "./storage.js";
 import { initTelemetry } from "./telemetry.js";
-import { initTraceCompressionListener, runTraceCompressionCycle } from "./trace-compression-listener.js";
+import {
+	initTraceCompressionListener,
+	runTraceCompressionCycle,
+} from "./trace-compression-listener.js";
 
 loadConfig();
 await initLogging();

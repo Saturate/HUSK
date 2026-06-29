@@ -12,13 +12,13 @@ import { getGraphProviderOrNull } from "./graph.js";
 import { ingest } from "./ingest.js";
 import { mountMcp } from "./mcp.js";
 import { isGitHubOAuthEnabled, oauth } from "./oauth.js";
+import { otlpReceiver } from "./otlp-receiver.js";
 import { rateLimiter } from "./rate-limit.js";
 import { sessions } from "./sessions.js";
 import { setup, setupGuard } from "./setup.js";
 import { getStorageProvider } from "./storage.js";
-import { getTelemetryProviderOrNull } from "./telemetry.js";
 import { telemetryApi } from "./telemetry-api.js";
-import { otlpReceiver } from "./otlp-receiver.js";
+import { getTelemetryProviderOrNull } from "./telemetry.js";
 
 const log = getLogger(["husk", "server"]);
 

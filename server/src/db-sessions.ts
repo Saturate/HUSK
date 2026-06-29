@@ -30,9 +30,7 @@ export function createSession(params: {
 }): string {
 	const id = crypto.randomUUID();
 	getDb()
-		.query(
-			"INSERT INTO sessions (id, claude_session_id, api_key_id, project) VALUES (?, ?, ?, ?)",
-		)
+		.query("INSERT INTO sessions (id, claude_session_id, api_key_id, project) VALUES (?, ?, ?, ?)")
 		.run(id, params.claudeSessionId, params.apiKeyId, params.project ?? null);
 	return id;
 }
@@ -72,7 +70,9 @@ export function updateSessionSummary(id: string, summary: string): void {
 }
 
 export function getSession(id: string): SessionRow | undefined {
-	return getDb().query<SessionRow, [string]>("SELECT * FROM sessions WHERE id = ?").get(id) ?? undefined;
+	return (
+		getDb().query<SessionRow, [string]>("SELECT * FROM sessions WHERE id = ?").get(id) ?? undefined
+	);
 }
 
 export function getSessionForUser(id: string, userId: string): SessionRow | undefined {
@@ -123,7 +123,9 @@ export function listSessions(opts?: {
 	sql += " LIMIT ? OFFSET ?";
 	params.push(limit, offset);
 
-	return getDb().query<SessionRow, (string | number)[]>(sql).all(...params);
+	return getDb()
+		.query<SessionRow, (string | number)[]>(sql)
+		.all(...params);
 }
 
 export function countSessions(opts?: { userId?: string; status?: string }): number {
@@ -148,7 +150,9 @@ export function countSessions(opts?: { userId?: string; status?: string }): numb
 		sql += ` WHERE ${conditions.join(" AND ")}`;
 	}
 
-	const row = getDb().query<{ count: number }, string[]>(sql).get(...params);
+	const row = getDb()
+		.query<{ count: number }, string[]>(sql)
+		.get(...params);
 	return row?.count ?? 0;
 }
 

@@ -9,8 +9,8 @@
  */
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { join } from "node:path";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 
 // ── CLI args ────────────────────────────────────────────────────────────────
@@ -48,7 +48,9 @@ function resolveCredentials(): { url: string; key: string } {
 
 	if (!url || !key) {
 		console.error("Error: HUSK server URL and API key required.");
-		console.error("  --url <url> --key <key>, or set HUSK_URL/HUSK_KEY, or configure ~/.husk/credentials.json");
+		console.error(
+			"  --url <url> --key <key>, or set HUSK_URL/HUSK_KEY, or configure ~/.husk/credentials.json",
+		);
 		process.exit(1);
 	}
 
@@ -372,7 +374,9 @@ for (const [, preRec] of preEvents) {
 }
 
 await flushSpans();
-console.log(`  ✓ ${stats.tools} tool spans created (${unmatchedPreCount} from unmatched pre events)`);
+console.log(
+	`  ✓ ${stats.tools} tool spans created (${unmatchedPreCount} from unmatched pre events)`,
+);
 
 // ── Phase 4: Subagents → Spans ──────────────────────────────────────────────
 
@@ -532,6 +536,12 @@ console.log(`  Permission spans: ${stats.permissions}`);
 console.log(`  Notification spans: ${stats.notifications}`);
 
 const totalSpans =
-	stats.turns + stats.tools + stats.subagents + stats.prompts +
-	stats.skills + stats.compactions + stats.permissions + stats.notifications;
+	stats.turns +
+	stats.tools +
+	stats.subagents +
+	stats.prompts +
+	stats.skills +
+	stats.compactions +
+	stats.permissions +
+	stats.notifications;
 console.log(`  Total:         ${stats.traces} traces, ${totalSpans} spans`);

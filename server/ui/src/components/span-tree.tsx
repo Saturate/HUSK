@@ -1,7 +1,7 @@
 import type { SpanRow } from "@/api";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { useState } from "react";
 
 interface TreeNode {
 	span: SpanRow;
@@ -57,6 +57,7 @@ function SpanNode({ node, depth, selectedSpanId, onSelectSpan }: SpanNodeProps) 
 
 	return (
 		<div>
+			{/* biome-ignore lint/a11y/useKeyWithClickEvents: span tree row click */}
 			<div
 				className={`flex items-center gap-2 rounded px-2 py-1 text-sm hover:bg-muted/50 ${isSelected ? "bg-sidebar-accent text-sidebar-accent-foreground" : ""} ${onSelectSpan ? "cursor-pointer" : ""}`}
 				style={{ paddingLeft: `${depth * 20 + 8}px` }}
@@ -80,7 +81,10 @@ function SpanNode({ node, depth, selectedSpanId, onSelectSpan }: SpanNodeProps) 
 				)}
 
 				<Badge
-					variant={(KIND_COLORS[s.kind] as "default" | "secondary" | "outline" | "destructive") ?? "outline"}
+					variant={
+						(KIND_COLORS[s.kind] as "default" | "secondary" | "outline" | "destructive") ??
+						"outline"
+					}
 					className="shrink-0 text-[10px]"
 				>
 					{s.kind}
@@ -94,9 +98,7 @@ function SpanNode({ node, depth, selectedSpanId, onSelectSpan }: SpanNodeProps) 
 
 				<span className="ml-auto flex shrink-0 gap-3 text-xs text-muted-foreground">
 					{s.duration_ms != null && <span>{s.duration_ms}ms</span>}
-					{s.cost_usd != null && s.cost_usd > 0 && (
-						<span>${s.cost_usd.toFixed(4)}</span>
-					)}
+					{s.cost_usd != null && s.cost_usd > 0 && <span>${s.cost_usd.toFixed(4)}</span>}
 					{s.status === "error" && (
 						<Badge variant="destructive" className="text-[10px]">
 							error
@@ -107,7 +109,13 @@ function SpanNode({ node, depth, selectedSpanId, onSelectSpan }: SpanNodeProps) 
 
 			{expanded &&
 				node.children.map((child) => (
-					<SpanNode key={child.span.id} node={child} depth={depth + 1} selectedSpanId={selectedSpanId} onSelectSpan={onSelectSpan} />
+					<SpanNode
+						key={child.span.id}
+						node={child}
+						depth={depth + 1}
+						selectedSpanId={selectedSpanId}
+						onSelectSpan={onSelectSpan}
+					/>
 				))}
 		</div>
 	);
@@ -129,7 +137,13 @@ export function SpanTree({ spans, selectedSpanId, onSelectSpan }: SpanTreeProps)
 	return (
 		<div className="rounded-lg border">
 			{tree.map((node) => (
-				<SpanNode key={node.span.id} node={node} depth={0} selectedSpanId={selectedSpanId} onSelectSpan={onSelectSpan} />
+				<SpanNode
+					key={node.span.id}
+					node={node}
+					depth={0}
+					selectedSpanId={selectedSpanId}
+					onSelectSpan={onSelectSpan}
+				/>
 			))}
 		</div>
 	);

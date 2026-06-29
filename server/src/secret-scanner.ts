@@ -1,7 +1,7 @@
-import { getLogger } from "@logtape/logtape";
 import { existsSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
+import { getLogger } from "@logtape/logtape";
 import { getDb } from "./db.js";
 import type { SpanRow } from "./telemetry.js";
 
@@ -120,7 +120,10 @@ const BUILTIN_PATTERNS: RegexPattern[] = [
 	{ name: "JWT Token", regex: /\beyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\b/ },
 	{ name: "Database URL", regex: /(?:postgres|mysql|mongodb|redis):\/\/[^:]+:[^@\s]+@[^\s]+/ },
 	{ name: "Password Assignment", regex: /(?:password|passwd|pwd)\s*[:=]\s*["']?[^\s"']{8,}/i },
-	{ name: "Secret Assignment", regex: /(?:secret|api_key|apikey|auth_token)\s*[:=]\s*["']?[^\s"']{8,}/i },
+	{
+		name: "Secret Assignment",
+		regex: /(?:secret|api_key|apikey|auth_token)\s*[:=]\s*["']?[^\s"']{8,}/i,
+	},
 ];
 
 class BuiltinScanner implements Scanner {
@@ -166,7 +169,7 @@ function getScanner(): Scanner {
 
 function redact(text: string): string {
 	if (text.length <= 8) return "***";
-	return text.slice(0, 4) + "..." + text.slice(-4);
+	return `${text.slice(0, 4)}...${text.slice(-4)}`;
 }
 
 // --- Public API ---
@@ -204,16 +207,15 @@ export async function scanSpan(span: SpanRow): Promise<SecretFinding[]> {
 
 export async function scanTrace(traceId: string): Promise<SecretFinding[]> {
 	const db = getDb();
-	const spans = db
-		.query<SpanRow, [string]>("SELECT * FROM spans WHERE trace_id = ?")
-		.all(traceId);
+	const spans = db.query<SpanRow, [string]>("SELECT * FROM spans WHERE trace_id = ?").all(traceId);
 
 	// For trufflehog efficiency: concatenate all span text and scan once
 	const s = getScanner();
 	if (s.name === "trufflehog") {
 		const textChunks: Array<{ field: string; span: SpanRow; text: string }> = [];
 		for (const span of spans) {
-			if (span.input_summary) textChunks.push({ field: "input_summary", span, text: span.input_summary });
+			if (span.input_summary)
+				textChunks.push({ field: "input_summary", span, text: span.input_summary });
 			if (span.attributes) textChunks.push({ field: "attributes", span, text: span.attributes });
 		}
 
@@ -285,7 +287,11 @@ export async function scanLogFiles(): Promise<{
 				if (seen.has(key)) continue;
 
 				const file = f.SourceMetadata?.Data?.Filesystem?.file ?? "";
-				const category = file.split("/").pop()?.replace(/-\d{4}-\d{2}-\d{2}\.jsonl$/, "") ?? "unknown";
+				const category =
+					file
+						.split("/")
+						.pop()
+						?.replace(/-\d{4}-\d{2}-\d{2}\.jsonl$/, "") ?? "unknown";
 
 				seen.set(key, {
 					span_id: "",
@@ -299,12 +305,16 @@ export async function scanLogFiles(): Promise<{
 					field: file.split("/").pop() ?? "",
 					started_at: "",
 				});
-			} catch { /* skip */ }
+			} catch {
+				/* skip */
+			}
 		}
 
 		return { scanner: s.name, findings: Array.from(seen.values()) };
 	} catch (err) {
-		log.warn("Log file scan failed: {error}", { error: err instanceof Error ? err.message : String(err) });
+		log.warn("Log file scan failed: {error}", {
+			error: err instanceof Error ? err.message : String(err),
+		});
 		return { scanner: s.name, findings: [] };
 	}
 }
@@ -338,11 +348,31 @@ export async function scanRecentTraces(limit = 20): Promise<{
 		.all(...traceIds);
 
 	// Build text chunks tagged with trace+span info
-	const chunks: Array<{ traceId: string; project: string | null; span: SpanRow; field: string; text: string }> = [];
+	const chunks: Array<{
+		traceId: string;
+		project: string | null;
+		span: SpanRow;
+		field: string;
+		text: string;
+	}> = [];
 	for (const span of allSpans) {
 		const project = (span as { trace_project?: string }).trace_project ?? null;
-		if (span.input_summary) chunks.push({ traceId: span.trace_id, project, span, field: "input_summary", text: span.input_summary });
-		if (span.attributes) chunks.push({ traceId: span.trace_id, project, span, field: "attributes", text: span.attributes });
+		if (span.input_summary)
+			chunks.push({
+				traceId: span.trace_id,
+				project,
+				span,
+				field: "input_summary",
+				text: span.input_summary,
+			});
+		if (span.attributes)
+			chunks.push({
+				traceId: span.trace_id,
+				project,
+				span,
+				field: "attributes",
+				text: span.attributes,
+			});
 	}
 
 	const s = getScanner();
@@ -441,21 +471,24 @@ export function getCachedFindings(): {
 	const db = getDb();
 
 	const rows = db
-		.query<{
-			id: string;
-			trace_id: string;
-			span_id: string;
-			secret_type: string;
-			redacted_match: string;
-			verified: number;
-			detector: string;
-			tool_name: string | null;
-			field: string | null;
-			found_at: string;
-		}, []>("SELECT * FROM secret_findings ORDER BY found_at DESC")
+		.query<
+			{
+				id: string;
+				trace_id: string;
+				span_id: string;
+				secret_type: string;
+				redacted_match: string;
+				verified: number;
+				detector: string;
+				tool_name: string | null;
+				field: string | null;
+				found_at: string;
+			},
+			[]
+		>("SELECT * FROM secret_findings ORDER BY found_at DESC")
 		.all();
 
-	const lastScan = rows.length > 0 ? rows[0]?.found_at ?? null : null;
+	const lastScan = rows.length > 0 ? (rows[0]?.found_at ?? null) : null;
 
 	const byTrace = new Map<string, SecretFinding[]>();
 	for (const r of rows) {
@@ -476,9 +509,12 @@ export function getCachedFindings(): {
 	}
 
 	const results = Array.from(byTrace.entries()).map(([trace_id, findings]) => {
-		const project = db
-			.query<{ project: string | null }, [string]>("SELECT project FROM traces WHERE trace_id = ?")
-			.get(trace_id)?.project ?? null;
+		const project =
+			db
+				.query<{ project: string | null }, [string]>(
+					"SELECT project FROM traces WHERE trace_id = ?",
+				)
+				.get(trace_id)?.project ?? null;
 		return { trace_id, project, finding_count: findings.length, findings };
 	});
 

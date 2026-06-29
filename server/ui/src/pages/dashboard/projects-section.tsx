@@ -1,5 +1,4 @@
 import { api } from "@/api";
-import { formatCost } from "@/lib/format";
 import {
 	Table,
 	TableBody,
@@ -8,6 +7,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { formatCost } from "@/lib/format";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router";
 
@@ -47,9 +47,7 @@ export function ProjectsSection() {
 										{p.project}
 									</Link>
 								</TableCell>
-								<TableCell className="text-right text-sm">
-									{formatCost(p.total_cost_usd)}
-								</TableCell>
+								<TableCell className="text-right text-sm">{formatCost(p.total_cost_usd)}</TableCell>
 								<TableCell className="text-right text-sm text-muted-foreground">
 									{p.session_count}
 								</TableCell>

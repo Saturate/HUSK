@@ -1,4 +1,5 @@
 import { getLogger } from "@logtape/logtape";
+import { SqliteTelemetryProvider } from "./telemetry-sqlite.js";
 import type {
 	CreateSpanParams,
 	DailyCost,
@@ -15,7 +16,6 @@ import type {
 	TraceRow,
 	TraceTotals,
 } from "./telemetry.js";
-import { SqliteTelemetryProvider } from "./telemetry-sqlite.js";
 
 const log = getLogger(["husk", "telemetry-otlp"]);
 

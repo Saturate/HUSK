@@ -2,7 +2,7 @@ import { getLogger } from "@logtape/logtape";
 import { Hono } from "hono";
 import { bearerKeyMiddleware, jwtMiddleware } from "./auth.js";
 import type { AppEnv } from "./env.js";
-import { scanRecentTraces, scanTrace, scanLogFiles, getCachedFindings } from "./secret-scanner.js";
+import { getCachedFindings, scanLogFiles, scanRecentTraces, scanTrace } from "./secret-scanner.js";
 import { getTelemetryProviderOrNull } from "./telemetry.js";
 import { compressTraceIfReady } from "./trace-compression-listener.js";
 
@@ -109,7 +109,9 @@ ingestApi.post("/spans", async (c) => {
 	const created: string[] = [];
 	for (const s of body.spans) {
 		if (!s.trace_id || !s.span_id || !s.name || !s.kind || !s.started_at) {
-			log.warn("Skipping span with missing required fields: {name}", { name: s.name ?? "(no name)" });
+			log.warn("Skipping span with missing required fields: {name}", {
+				name: s.name ?? "(no name)",
+			});
 			continue;
 		}
 

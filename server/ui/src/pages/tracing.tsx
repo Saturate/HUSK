@@ -139,7 +139,10 @@ export function TracingPage() {
 											{t.model ? t.model.replace("claude-", "").replace("[1m]", "") : "-"}
 										</TableCell>
 										<TableCell>
-											<Badge variant={t.status === "active" ? "default" : "secondary"} className="text-xs">
+											<Badge
+												variant={t.status === "active" ? "default" : "secondary"}
+												className="text-xs"
+											>
 												{t.status}
 											</Badge>
 										</TableCell>
@@ -166,9 +169,7 @@ export function TracingPage() {
 
 					{/* Pagination */}
 					<div className="mt-4 flex items-center justify-between">
-						<span className="text-sm text-muted-foreground">
-							Page {page + 1}
-						</span>
+						<span className="text-sm text-muted-foreground">Page {page + 1}</span>
 						<div className="flex gap-2">
 							<Button
 								variant="outline"

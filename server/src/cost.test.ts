@@ -96,11 +96,17 @@ describe("calculateCost", () => {
 
 describe("calculateCacheHitRate", () => {
 	test("returns 0 when no tokens", () => {
-		expect(calculateCacheHitRate({ inputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 })).toBe(0);
+		expect(
+			calculateCacheHitRate({ inputTokens: 0, cacheReadTokens: 0, cacheCreateTokens: 0 }),
+		).toBe(0);
 	});
 
 	test("calculates correct ratio", () => {
-		const rate = calculateCacheHitRate({ inputTokens: 100, cacheReadTokens: 400, cacheCreateTokens: 0 });
+		const rate = calculateCacheHitRate({
+			inputTokens: 100,
+			cacheReadTokens: 400,
+			cacheCreateTokens: 0,
+		});
 		expect(rate).toBe(0.8);
 	});
 });
