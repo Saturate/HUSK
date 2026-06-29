@@ -15,7 +15,6 @@ import {
 	ServerCog,
 	Settings2,
 	ShieldAlert,
-	Star,
 	Users,
 } from "lucide-react";
 import { useMemo } from "react";
@@ -58,7 +57,6 @@ export function AppSidebar() {
 					<SidebarItem icon={Activity} to="/tracing" label="Session Tracing" />
 					<SidebarItem icon={Cpu} to="/models" label="Models" />
 					<SidebarItem icon={ShieldAlert} to="/secrets" label="Secrets" />
-					<SidebarItem icon={Star} to="/scores" label="Scores" disabled />
 				</SidebarGroup>
 
 				<SidebarGroup label="Knowledge">
