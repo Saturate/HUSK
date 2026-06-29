@@ -170,21 +170,57 @@ function SessionCaptureSettings() {
 					{(settings.compression_mode ?? "client") === "server" && (
 						<>
 							<div className="space-y-1">
-								<Label htmlFor="compression-provider">Compression Provider</Label>
+								<Label htmlFor="compression-provider">LLM Provider</Label>
 								<Select
 									value={settings.compression_provider ?? "anthropic"}
 									onValueChange={(v) => handleUpdate("compression_provider", v)}
 								>
-									<SelectTrigger id="compression-provider" className="w-48">
+									<SelectTrigger id="compression-provider" className="w-64">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="anthropic">Anthropic</SelectItem>
-										<SelectItem value="openrouter">OpenRouter</SelectItem>
+										<SelectItem value="anthropic">Anthropic (direct API)</SelectItem>
+										<SelectItem value="openrouter">OpenAI-compatible (OpenRouter, llama.cpp, vLLM, etc.)</SelectItem>
 										<SelectItem value="ollama">Ollama</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
+
+							{/* Endpoint URL: shown for OpenAI-compatible and Ollama */}
+							{(settings.compression_provider ?? "anthropic") !== "anthropic" && (
+								<div className="space-y-1">
+									<Label htmlFor="compression-base-url">Endpoint URL</Label>
+									<div className="flex gap-2">
+										<Input
+											id="compression-base-url"
+											className="w-72"
+											placeholder={
+												(settings.compression_provider ?? "anthropic") === "ollama"
+													? "http://localhost:11434"
+													: "https://openrouter.ai/api/v1"
+											}
+											value={compressionBaseUrl}
+											onChange={(e) => setCompressionBaseUrl(e.target.value)}
+										/>
+										<Button
+											size="sm"
+											variant="outline"
+											disabled={!compressionBaseUrl.trim()}
+											onClick={() => {
+												handleUpdate("compression_base_url", compressionBaseUrl.trim());
+												setCompressionBaseUrl("");
+											}}
+										>
+											Save
+										</Button>
+									</div>
+									<p className="text-xs text-muted-foreground">
+										{(settings.compression_provider ?? "anthropic") === "ollama"
+											? "Ollama server URL"
+											: "Any endpoint that serves /v1/chat/completions (OpenRouter, llama.cpp, vLLM, LM Studio, Groq)"}
+									</p>
+								</div>
+							)}
 
 							<div className="space-y-1">
 								<Label htmlFor="compression-model">Model</Label>
@@ -192,7 +228,11 @@ function SessionCaptureSettings() {
 									<Input
 										id="compression-model"
 										className="w-72"
-										placeholder={settings.compression_model ?? "claude-haiku-4-5-20251001"}
+										placeholder={
+											(settings.compression_provider ?? "anthropic") === "ollama"
+												? "llama3.2"
+												: settings.compression_model ?? "claude-haiku-4-5-20251001"
+										}
 										value={compressionModel}
 										onChange={(e) => setCompressionModel(e.target.value)}
 									/>
@@ -210,52 +250,26 @@ function SessionCaptureSettings() {
 								</div>
 							</div>
 
-							<div className="space-y-1">
-								<Label htmlFor="compression-api-key">
-									API Key {(settings.compression_provider ?? "anthropic") === "ollama" ? "(not needed)" : `(for ${settings.compression_provider ?? "Anthropic"})`}
-								</Label>
-								<div className="flex gap-2">
-									<Input
-										id="compression-api-key"
-										type="password"
-										className="w-72"
-										placeholder={settings.compression_api_key ? "****" : "Not set"}
-										value={compressionApiKey}
-										onChange={(e) => setCompressionApiKey(e.target.value)}
-										disabled={(settings.compression_provider ?? "anthropic") === "ollama"}
-									/>
-									<Button
-										size="sm"
-										variant="outline"
-										disabled={!compressionApiKey.trim()}
-										onClick={() => {
-											handleUpdate("compression_api_key", compressionApiKey.trim());
-											setCompressionApiKey("");
-										}}
-									>
-										Save
-									</Button>
-								</div>
-							</div>
-
-							{(settings.compression_provider === "openrouter") && (
+							{/* API key: not needed for Ollama */}
+							{(settings.compression_provider ?? "anthropic") !== "ollama" && (
 								<div className="space-y-1">
-									<Label htmlFor="compression-base-url">Base URL</Label>
+									<Label htmlFor="compression-api-key">API Key</Label>
 									<div className="flex gap-2">
 										<Input
-											id="compression-base-url"
+											id="compression-api-key"
+											type="password"
 											className="w-72"
-											placeholder={settings.compression_base_url ?? "https://openrouter.ai/api/v1"}
-											value={compressionBaseUrl}
-											onChange={(e) => setCompressionBaseUrl(e.target.value)}
+											placeholder={settings.compression_api_key ? "****" : "Not set"}
+											value={compressionApiKey}
+											onChange={(e) => setCompressionApiKey(e.target.value)}
 										/>
 										<Button
 											size="sm"
 											variant="outline"
-											disabled={!compressionBaseUrl.trim()}
+											disabled={!compressionApiKey.trim()}
 											onClick={() => {
-												handleUpdate("compression_base_url", compressionBaseUrl.trim());
-												setCompressionBaseUrl("");
+												handleUpdate("compression_api_key", compressionApiKey.trim());
+												setCompressionApiKey("");
 											}}
 										>
 											Save
