@@ -17,27 +17,8 @@ on:
       - "website/**"
 
 jobs:
-  e2e-local:
-    name: E2E (local install)
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Install CLI
-        run: npm install -g @huskai/cli@latest
-
-      - name: Run E2E tests
-        run: bash cli/test/e2e.sh local
-
-  e2e-remote:
-    name: E2E (remote server via Docker)
+  e2e:
+    name: E2E
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -53,21 +34,34 @@ jobs:
       - name: Build UI
         run: cd server && bun run build:ui
 
+      - name: Build CLI
+        run: cd cli && bun install --frozen-lockfile && bun run build
+
+      - name: Install CLI globally
+        run: cd cli && npm install -g .
+
+      - name: Test CLI basics
+        run: |
+          husk -v
+          husk --help
+          husk status
+          husk sync --dry-run
+
       - name: Start server
         run: |
           cd server
           HUSK_OTLP_AUTH=false HUSK_STORAGE=sqlite-vec HUSK_EMBEDDINGS=transformers bun run src/index.ts &
-          sleep 5
+          for i in $(seq 1 30); do curl -sf http://localhost:3000/health > /dev/null 2>&1 && break; sleep 1; done
 
       - name: Setup admin
         id: setup
         run: |
-          curl -s -X POST http://localhost:3000/setup \
+          curl -sf -X POST http://localhost:3000/setup \
             -H "Content-Type: application/json" \
             -d '{"username":"admin","password":"husk-e2e-admin"}'
 
-          KEY=$(curl -s -X POST http://localhost:3000/api/keys \
-            -b <(curl -s -c - http://localhost:3000/api/auth/login \
+          KEY=$(curl -sf -X POST http://localhost:3000/api/keys \
+            -b <(curl -sf -c - http://localhost:3000/api/auth/login \
               -H "Content-Type: application/json" \
               -d '{"username":"admin","password":"husk-e2e-admin"}') \
             -H "Content-Type: application/json" \
