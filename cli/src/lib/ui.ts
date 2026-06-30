@@ -1,8 +1,7 @@
-import { createRequire } from "node:module";
 import * as p from "@clack/prompts";
 
-const require = createRequire(import.meta.url);
-export const { version: VERSION } = require("../../package.json") as { version: string };
+declare const __HUSK_VERSION__: string;
+export const VERSION = typeof __HUSK_VERSION__ !== "undefined" ? __HUSK_VERSION__ : "dev";
 
 export function isInteractive(): boolean {
 	return process.stdin.isTTY === true;
