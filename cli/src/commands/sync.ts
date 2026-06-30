@@ -14,6 +14,8 @@ interface MemoryFile {
 	content: string;
 	project: string | null;
 	modified_at: string;
+	origin_session_id: string | null;
+	source_file: string;
 }
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
@@ -22,9 +24,12 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
 
 	const meta: Record<string, string> = {};
 	for (const line of match[1].split("\n")) {
-		const idx = line.indexOf(":");
+		const trimmed = line.trim();
+		const idx = trimmed.indexOf(":");
 		if (idx > 0) {
-			meta[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+			const key = trimmed.slice(0, idx).trim();
+			const value = trimmed.slice(idx + 1).trim();
+			if (value) meta[key] = value;
 		}
 	}
 	return { meta, body: match[2].trim() };
@@ -120,6 +125,8 @@ function discoverClaudeMemories(): MemoryFile[] {
 				content: body,
 				project: projectFromPath(dir),
 				modified_at: mtime,
+				origin_session_id: meta.originSessionId ?? null,
+				source_file: file,
 			});
 		}
 	}
@@ -213,6 +220,9 @@ export async function syncCommand(opts?: { dryRun?: boolean }) {
 						source: "claude_code_sync",
 						claude_name: mem.name,
 						claude_type: mem.type,
+						origin_session_id: mem.origin_session_id,
+						source_file: mem.source_file,
+						source_path: mem.path,
 					},
 				}),
 			});
