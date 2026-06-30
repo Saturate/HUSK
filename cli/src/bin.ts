@@ -7,6 +7,7 @@ import { logsCommand } from "./commands/logs.js";
 import { serverSetupCommand } from "./commands/server-setup.js";
 import { deployCommand } from "./commands/deploy.js";
 import { syncCommand } from "./commands/sync.js";
+import { VERSION } from "./lib/ui.js";
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -60,7 +61,7 @@ async function main() {
 	}
 
 	if (hasFlag("version") || hasFlag("v")) {
-		console.log("husk 0.2.0");
+		console.log(`husk ${VERSION}`);
 		return;
 	}
 

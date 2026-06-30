@@ -1,6 +1,8 @@
+import { createRequire } from "node:module";
 import * as p from "@clack/prompts";
 
-const VERSION = "0.2.0";
+const require = createRequire(import.meta.url);
+export const { version: VERSION } = require("../../package.json") as { version: string };
 
 export function isInteractive(): boolean {
 	return process.stdin.isTTY === true;
