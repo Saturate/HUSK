@@ -1,3 +1,5 @@
+import { chmodSync, mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { execSync } from "node:child_process";
 import * as p from "@clack/prompts";
 import { handleCancel, isInteractive, withSpinner } from "./ui.js";
@@ -44,36 +46,48 @@ export async function ensureBun(): Promise<string> {
 	return await installBun();
 }
 
-async function downloadBunInstallScript(): Promise<string> {
-	const res = await fetch("https://bun.sh/install");
-	if (!res.ok) throw new Error(`Failed to download Bun installer: HTTP ${res.status}`);
-	return await res.text();
+function isMusl(): boolean {
+	try {
+		const ldd = execSync("ldd --version 2>&1 || true", { encoding: "utf-8" });
+		return ldd.includes("musl");
+	} catch {
+		return false;
+	}
 }
 
 async function installBun(): Promise<string> {
-	await withSpinner("Installing Bun...", async () => {
-		const script = await downloadBunInstallScript();
-		execSync("sh -s", { input: script, stdio: "pipe" });
-	});
-
-	// Re-detect after install
-	const bunPath = findBun();
-	if (!bunPath) {
-		// Try common install locations
-		const homeBun = `${process.env.HOME}/.bun/bin/bun`;
-		try {
-			execSync(`${homeBun} --version`, { stdio: "pipe" });
-			p.log.success(`Bun installed at ${homeBun}`);
-			return homeBun;
-		} catch {
-			p.log.error(
-				"Bun was installed but could not be found. You may need to restart your shell.",
-			);
-			process.exit(1);
-		}
+	if (isMusl()) {
+		p.log.error("Bun does not support musl/Alpine Linux. Use a glibc-based image (e.g. node:22 instead of node:22-alpine), or install Bun separately: https://bun.sh");
+		process.exit(1);
 	}
 
-	const version = getBunVersion(bunPath);
-	p.log.success(`Bun ${version} installed`);
-	return bunPath;
+	const bunDir = join(process.env.HOME ?? "/root", ".bun", "bin");
+	const bunPath = join(bunDir, "bun");
+
+	await withSpinner("Installing Bun...", async () => {
+		const arch = process.arch === "x64" ? "x64" : "aarch64";
+		const platform = process.platform === "darwin" ? "darwin" : "linux";
+		const url = `https://github.com/oven-sh/bun/releases/latest/download/bun-${platform}-${arch}.zip`;
+
+		const res = await fetch(url);
+		if (!res.ok) throw new Error(`Failed to download Bun: HTTP ${res.status}`);
+		const buffer = Buffer.from(await res.arrayBuffer());
+
+		const zipPath = "/tmp/bun-download.zip";
+		writeFileSync(zipPath, buffer);
+
+		mkdirSync(bunDir, { recursive: true });
+		execSync(`unzip -o ${zipPath} -d /tmp/bun-extract`, { stdio: "pipe" });
+		execSync(`cp /tmp/bun-extract/bun-${platform}-${arch}/bun ${bunPath}`, { stdio: "pipe" });
+		chmodSync(bunPath, 0o755);
+	});
+
+	try {
+		const version = execSync(`${bunPath} --version`, { encoding: "utf-8" }).trim();
+		p.log.success(`Bun ${version} installed at ${bunPath}`);
+		return bunPath;
+	} catch {
+		p.log.error("Bun was installed but could not be found. You may need to restart your shell.");
+		process.exit(1);
+	}
 }
