@@ -44,37 +44,16 @@ export async function ensureBun(): Promise<string> {
 	return await installBun();
 }
 
-function hasCurl(): boolean {
-	try {
-		execSync("which curl", { stdio: "pipe" });
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-function hasWget(): boolean {
-	try {
-		execSync("which wget", { stdio: "pipe" });
-		return true;
-	} catch {
-		return false;
-	}
+async function downloadBunInstallScript(): Promise<string> {
+	const res = await fetch("https://bun.sh/install");
+	if (!res.ok) throw new Error(`Failed to download Bun installer: HTTP ${res.status}`);
+	return await res.text();
 }
 
 async function installBun(): Promise<string> {
 	await withSpinner("Installing Bun...", async () => {
-		if (hasCurl()) {
-			execSync("curl -fsSL https://bun.sh/install | sh", {
-				stdio: "pipe",
-			});
-		} else if (hasWget()) {
-			execSync("wget -qO- https://bun.sh/install | sh", {
-				stdio: "pipe",
-			});
-		} else {
-			throw new Error("Neither curl nor wget found. Install one of them first, or install Bun manually: https://bun.sh");
-		}
+		const script = await downloadBunInstallScript();
+		execSync("sh -s", { input: script, stdio: "pipe" });
 	});
 
 	// Re-detect after install
