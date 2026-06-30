@@ -1,3 +1,4 @@
+import { execSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, join } from "node:path";
 import { homedir } from "node:os";
@@ -12,6 +13,7 @@ interface MemoryFile {
 	description: string;
 	content: string;
 	project: string | null;
+	modified_at: string;
 }
 
 function parseFrontmatter(raw: string): { meta: Record<string, string>; body: string } {
@@ -28,10 +30,55 @@ function parseFrontmatter(raw: string): { meta: Record<string, string>; body: st
 	return { meta, body: match[2].trim() };
 }
 
-/** Extract project name from Claude memory path like -Users-alkj-code-github-PROJECTNAME */
-function projectFromPath(memoryPath: string): string | null {
-	const match = memoryPath.match(/-Users-[^/]+-code-(?:github-)?([^/]+)/);
-	return match ? match[1] : null;
+/** Reconstruct project name from Claude's dir name by finding the actual directory on disk */
+function projectFromPath(dirName: string): string | null {
+	// Strip everything before 'code-' to get the project path segments
+	const codeIdx = dirName.indexOf("-code-");
+	if (codeIdx < 0) return null;
+	const rest = dirName.slice(codeIdx + 6); // after "-code-"
+
+	// Strip "github-" prefix if present
+	const projectPart = rest.startsWith("github-") ? rest.slice(7) : rest;
+	if (!projectPart) return null;
+
+	// Reconstruct the filesystem path from the home dir
+	const homePrefix = dirName.slice(1, codeIdx).replaceAll("-", "/"); // "Users/alkj"
+	const codePath = `/${homePrefix}/code`;
+	const githubPath = `${codePath}/github`;
+
+	// Try to find the actual directory by testing path candidates
+	// The challenge: hyphens could be path separators OR literal hyphens in dir names
+	// Strategy: try git remote from the most likely paths
+	const candidates: string[] = [];
+
+	// Direct match under github/
+	if (rest.startsWith("github-")) {
+		candidates.push(join(githubPath, projectPart.replaceAll("-", "/")));
+		candidates.push(join(githubPath, projectPart));
+	}
+
+	// Direct match under code/
+	candidates.push(join(codePath, rest.replaceAll("-", "/")));
+	candidates.push(join(codePath, rest));
+
+	for (const candidate of candidates) {
+		try {
+			if (!statSync(candidate).isDirectory()) continue;
+			const remote = execSync("git remote get-url origin", {
+				cwd: candidate,
+				stdio: ["pipe", "pipe", "pipe"],
+				timeout: 2000,
+			}).toString().trim();
+			const repoMatch = remote.match(/[/:]([^/]+?)(?:\.git)?$/);
+			if (repoMatch) return repoMatch[1];
+		} catch {
+			continue;
+		}
+	}
+
+	// Fallback: use the last segment, replacing hyphens with dots for known patterns
+	// e.g., "DCC-Frontends" -> try "DCC.Frontends"
+	return projectPart;
 }
 
 function discoverClaudeMemories(): MemoryFile[] {
@@ -64,6 +111,7 @@ function discoverClaudeMemories(): MemoryFile[] {
 
 			if (!body) continue;
 
+			const mtime = statSync(filePath).mtime.toISOString();
 			memories.push({
 				path: filePath,
 				name: meta.name ?? basename(file, ".md"),
@@ -71,6 +119,7 @@ function discoverClaudeMemories(): MemoryFile[] {
 				description: meta.description ?? "",
 				content: body,
 				project: projectFromPath(dir),
+				modified_at: mtime,
 			});
 		}
 	}
@@ -121,9 +170,13 @@ export async function syncCommand(opts?: { dryRun?: boolean }) {
 		return;
 	}
 
-	const creds = readCredentials();
+	const envUrl = process.env.HUSK_URL;
+	const envKey = process.env.HUSK_API_KEY;
+	const creds = envUrl && envKey
+		? { url: envUrl, apiKey: envKey, username: "env" }
+		: readCredentials();
 	if (!creds) {
-		p.log.error("No credentials found. Run `husk init` first.");
+		p.log.error("No credentials found. Set HUSK_URL + HUSK_API_KEY or run `husk init`.");
 		process.exit(1);
 	}
 
@@ -155,6 +208,7 @@ export async function syncCommand(opts?: { dryRun?: boolean }) {
 					git_remote: mem.project,
 					title: mem.description || mem.name,
 					memory_type: memoryTypeFromClaude(mem.type),
+					created_at: mem.modified_at,
 					metadata: {
 						source: "claude_code_sync",
 						claude_name: mem.name,
@@ -172,11 +226,20 @@ export async function syncCommand(opts?: { dryRun?: boolean }) {
 					imported++;
 					p.log.success(`${mem.name} (${scope}${mem.project ? ` · ${mem.project}` : ""})`);
 				}
+			} else if (res.status === 429) {
+				p.log.warn(`${mem.name}: rate limited, waiting...`);
+				await new Promise((r) => setTimeout(r, 2000));
+				errors++;
 			} else {
 				errors++;
-				const err = (await res.json()) as { error?: string };
-				p.log.error(`${mem.name}: ${err.error ?? res.statusText}`);
+				try {
+					const err = (await res.json()) as { error?: string };
+					p.log.error(`${mem.name}: ${err.error ?? res.statusText}`);
+				} catch {
+					p.log.error(`${mem.name}: HTTP ${res.status}`);
+				}
 			}
+			await new Promise((r) => setTimeout(r, 100));
 		} catch (err) {
 			errors++;
 			p.log.error(`${mem.name}: ${err instanceof Error ? err.message : "failed"}`);

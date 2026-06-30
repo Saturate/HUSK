@@ -55,25 +55,47 @@ export function createMemory(params: {
 	slug?: string | null;
 	memoryType?: string | null;
 	path?: string | null;
+	createdAt?: string | null;
 }): MemoryRow {
 	const db = getDb();
-	db.query(
-		`INSERT INTO memories (id, api_key_id, git_remote, scope, summary, metadata, expires_at, workspace_id, title, slug, memory_type, path)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-	).run(
-		params.id,
-		params.apiKeyId,
-		params.gitRemote ?? null,
-		params.scope,
-		params.summary,
-		params.metadata ?? null,
-		params.expiresAt ?? null,
-		params.workspaceId ?? null,
-		params.title ?? null,
-		params.slug ?? null,
-		params.memoryType ?? null,
-		params.path ?? null,
-	);
+	if (params.createdAt) {
+		db.query(
+			`INSERT INTO memories (id, api_key_id, git_remote, scope, summary, metadata, expires_at, workspace_id, title, slug, memory_type, path, created_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		).run(
+			params.id,
+			params.apiKeyId,
+			params.gitRemote ?? null,
+			params.scope,
+			params.summary,
+			params.metadata ?? null,
+			params.expiresAt ?? null,
+			params.workspaceId ?? null,
+			params.title ?? null,
+			params.slug ?? null,
+			params.memoryType ?? null,
+			params.path ?? null,
+			params.createdAt,
+		);
+	} else {
+		db.query(
+			`INSERT INTO memories (id, api_key_id, git_remote, scope, summary, metadata, expires_at, workspace_id, title, slug, memory_type, path)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		).run(
+			params.id,
+			params.apiKeyId,
+			params.gitRemote ?? null,
+			params.scope,
+			params.summary,
+			params.metadata ?? null,
+			params.expiresAt ?? null,
+			params.workspaceId ?? null,
+			params.title ?? null,
+			params.slug ?? null,
+			params.memoryType ?? null,
+			params.path ?? null,
+		);
+	}
 	return db
 		.query<MemoryRow, [string]>("SELECT * FROM memories WHERE id = ?")
 		.get(params.id) as MemoryRow;

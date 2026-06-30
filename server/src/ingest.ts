@@ -99,6 +99,7 @@ interface StoreMemoryParams {
 	title?: string;
 	memoryType?: string;
 	path?: string;
+	createdAt?: string;
 }
 
 interface StoredMemory {
@@ -260,7 +261,7 @@ export async function storeMemory(params: StoreMemoryParams): Promise<StoreMemor
 	}
 
 	const id = crypto.randomUUID();
-	const createdAt = new Date().toISOString();
+	const createdAt = params.createdAt ?? new Date().toISOString();
 
 	createMemory({
 		id,
@@ -275,6 +276,7 @@ export async function storeMemory(params: StoreMemoryParams): Promise<StoreMemor
 		slug: classification.slug,
 		memoryType: classification.memory_type,
 		path: classification.path,
+		createdAt,
 	});
 
 	try {
@@ -332,6 +334,7 @@ interface IngestBody {
 	title?: string;
 	memory_type?: string;
 	path?: string;
+	created_at?: string;
 }
 
 const ingest = new Hono<AppEnv>();
@@ -386,6 +389,7 @@ ingest.post("/", async (c) => {
 			title: body.title,
 			memoryType: body.memory_type,
 			path: body.path,
+			createdAt: body.created_at,
 		});
 
 		if (isDuplicate(result)) {
