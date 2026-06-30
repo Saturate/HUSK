@@ -44,11 +44,37 @@ export async function ensureBun(): Promise<string> {
 	return await installBun();
 }
 
+function hasCurl(): boolean {
+	try {
+		execSync("which curl", { stdio: "pipe" });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function hasWget(): boolean {
+	try {
+		execSync("which wget", { stdio: "pipe" });
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 async function installBun(): Promise<string> {
 	await withSpinner("Installing Bun...", async () => {
-		execSync("curl -fsSL https://bun.sh/install | bash", {
-			stdio: "pipe",
-		});
+		if (hasCurl()) {
+			execSync("curl -fsSL https://bun.sh/install | sh", {
+				stdio: "pipe",
+			});
+		} else if (hasWget()) {
+			execSync("wget -qO- https://bun.sh/install | sh", {
+				stdio: "pipe",
+			});
+		} else {
+			throw new Error("Neither curl nor wget found. Install one of them first, or install Bun manually: https://bun.sh");
+		}
 	});
 
 	// Re-detect after install
