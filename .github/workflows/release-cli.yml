@@ -28,6 +28,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install git-cliff
         uses: kenji-miyake/setup-git-cliff@v2
@@ -60,9 +61,8 @@ jobs:
           name: "@huskai/cli v${{ steps.version.outputs.version }}"
           body_path: RELEASE_NOTES.md
 
-      - name: Configure npm registry
-        run: echo "registry=https://registry.npmjs.org/" > ~/.npmrc
-
       - name: Publish to npm
         working-directory: cli
         run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
