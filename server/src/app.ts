@@ -87,7 +87,7 @@ app.use("/setup/*", rateLimiter({ window: 60, max: 5 }));
 app.use("/api/auth/*", rateLimiter({ window: 60, max: 10 }));
 app.use("/api/users/*", rateLimiter({ window: 60, max: 20 }));
 app.use("/api/invites/*", rateLimiter({ window: 60, max: 10 }));
-app.use("/ingest/*", rateLimiter({ window: 60, max: 60 }));
+app.use("/ingest/*", rateLimiter({ window: 60, max: 200 }));
 app.use("/mcp/*", rateLimiter({ window: 60, max: 60 }));
 app.use("/hooks/*", rateLimiter({ window: 60, max: 120 }));
 
