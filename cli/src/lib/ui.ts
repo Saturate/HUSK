@@ -1,6 +1,6 @@
 import * as p from "@clack/prompts";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 
 export function isInteractive(): boolean {
 	return process.stdin.isTTY === true;

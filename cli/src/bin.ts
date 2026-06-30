@@ -60,7 +60,7 @@ async function main() {
 	}
 
 	if (hasFlag("version") || hasFlag("v")) {
-		console.log("husk 0.1.0");
+		console.log("husk 0.2.0");
 		return;
 	}
 
