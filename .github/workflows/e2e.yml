@@ -1,0 +1,82 @@
+name: E2E
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
+      - "demo.gif"
+      - "website/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "LICENSE"
+      - "demo.gif"
+      - "website/**"
+
+jobs:
+  e2e-local:
+    name: E2E (local install)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install CLI
+        run: npm install -g @huskai/cli@latest
+
+      - name: Run E2E tests
+        run: bash cli/test/e2e.sh local
+
+  e2e-remote:
+    name: E2E (remote server via Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile && cd server/ui && bun install --frozen-lockfile
+
+      - name: Build UI
+        run: cd server && bun run build:ui
+
+      - name: Start server
+        run: |
+          cd server
+          HUSK_OTLP_AUTH=false HUSK_STORAGE=sqlite-vec HUSK_EMBEDDINGS=transformers bun run src/index.ts &
+          sleep 5
+
+      - name: Setup admin
+        id: setup
+        run: |
+          curl -s -X POST http://localhost:3000/setup \
+            -H "Content-Type: application/json" \
+            -d '{"username":"admin","password":"husk-e2e-admin"}'
+
+          KEY=$(curl -s -X POST http://localhost:3000/api/keys \
+            -b <(curl -s -c - http://localhost:3000/api/auth/login \
+              -H "Content-Type: application/json" \
+              -d '{"username":"admin","password":"husk-e2e-admin"}') \
+            -H "Content-Type: application/json" \
+            -d '{"label":"e2e"}' | grep -o '"key":"[^"]*"' | cut -d'"' -f4)
+
+          echo "api_key=$KEY" >> "$GITHUB_OUTPUT"
+
+      - name: Run E2E tests
+        env:
+          HUSK_URL: http://localhost:3000
+          HUSK_API_KEY: ${{ steps.setup.outputs.api_key }}
+        run: bash cli/test/e2e.sh remote

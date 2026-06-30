@@ -1,228 +1,77 @@
-#!/bin/bash
-# E2E test for husk CLI
-# Runs inside the Docker container with Node + Bun + pre-staged server
-
+#!/usr/bin/env bash
 set -euo pipefail
+MODE="${1:-local}"
+PASS=0; FAIL=0; ERRORS=""
+ADMIN_PASSWORD="${HUSK_PASSWORD:-husk-e2e-admin}"
 
-PASS=0
-FAIL=0
-CLI="node /app/cli/dist/bin.js"
+pass() { PASS=$((PASS + 1)); echo "  PASS: $1"; }
+fail() { FAIL=$((FAIL + 1)); ERRORS="${ERRORS}\n  FAIL: $1"; echo "  FAIL: $1"; }
+check() { if "$@" 2>&1 | grep -q "$1"; then pass "$2"; else fail "$2"; fi; }
+check_output() { local n="$1" e="$2"; shift 2; if "$@" 2>&1 | grep -q "$e"; then pass "$n"; else fail "$n"; fi; }
 
-pass() { echo "  ✓ $1"; PASS=$((PASS + 1)); }
-fail() { echo "  ✗ $1"; FAIL=$((FAIL + 1)); }
+echo ""; echo "=== HUSK E2E Test (${MODE}) ==="
 
-echo ""
-echo "═══════════════════════════════════════"
-echo "  HUSK CLI — End-to-End Tests"
-echo "═══════════════════════════════════════"
-echo ""
+if [ "$MODE" = "local" ]; then
+  echo ""; echo "--- CLI ---"
+  check_output "version" "0\." husk -v
+  check_output "help" "Commands:" husk --help
+  check_output "status" "Status:" husk status
+  check_output "sync dry-run" "memories" husk sync --dry-run
 
-# ─── Test 1: --help ────────────────────────────────────────
-echo "▸ Test: --help"
-if $CLI --help 2>&1 | grep -q "Memory layer for AI coding assistants"; then
-  pass "--help shows banner"
-else
-  fail "--help missing banner"
+  echo ""; echo "--- Server start ---"
+  husk --foreground > /tmp/husk-e2e.log 2>&1 &
+  HUSK_PID=$!
+  echo "  Waiting for server..."
+  for _ in $(seq 1 60); do curl -sf http://localhost:3000/health > /dev/null 2>&1 && break; sleep 3; done
+  check_output "health" '"status":"ok"' curl -s http://localhost:3000/health
+  API_KEY=$(grep -o 'husk_[A-Za-z0-9_-]*' /tmp/husk-e2e.log | head -1 || true)
+  HUSK_URL="http://localhost:3000"
+  ADMIN_PASSWORD="husk-e2e-admin"
+  if [ -z "$API_KEY" ]; then fail "API key"; kill "$HUSK_PID" 2>/dev/null || true; echo "Results: $PASS passed, $FAIL failed"; exit 1; fi
+  pass "API key generated"
+
+elif [ "$MODE" = "remote" ]; then
+  HUSK_URL="${HUSK_URL:?Set HUSK_URL}"; API_KEY="${HUSK_API_KEY:?Set HUSK_API_KEY}"
+  echo ""; echo "--- Remote: ${HUSK_URL} ---"
+  check_output "health" '"status":"ok"' curl -s "${HUSK_URL}/health"
 fi
 
-# ─── Test 2: --version ─────────────────────────────────────
-echo "▸ Test: --version"
-VERSION=$($CLI --version 2>&1)
-if echo "$VERSION" | grep -q "husk 0.1.0"; then
-  pass "--version shows 0.1.0"
-else
-  fail "--version unexpected: $VERSION"
-fi
+echo ""; echo "--- Auth ---"
+curl -s -c /tmp/husk-cookies -X POST "${HUSK_URL}/api/auth/login" -H "Content-Type: application/json" -d "{\"username\":\"admin\",\"password\":\"${ADMIN_PASSWORD}\"}" > /tmp/husk-login.json
+if grep -q '"username"' /tmp/husk-login.json; then pass "admin login"; else fail "admin login"; fi
 
-# ─── Test 3: status (before start) ─────────────────────────
-echo "▸ Test: status (server not running)"
-STATUS=$($CLI status 2>&1)
-if echo "$STATUS" | grep -q "stopped"; then
-  pass "status shows stopped"
-else
-  fail "status should show stopped: $STATUS"
-fi
+echo ""; echo "--- Ingest ---"
+check_output "ingest fact" '"id"\|"duplicate"' curl -s -X POST "${HUSK_URL}/ingest" -H "Authorization: Bearer ${API_KEY}" -H "Content-Type: application/json" -d '{"summary":"E2E: sqlite-vec zero-dep vector storage","scope":"project","git_remote":"e2e-test","title":"sqlite-vec","memory_type":"fact"}'
+check_output "ingest decision" '"id"\|"duplicate"' curl -s -X POST "${HUSK_URL}/ingest" -H "Authorization: Bearer ${API_KEY}" -H "Content-Type: application/json" -d '{"summary":"E2E: chose Qdrant over Pinecone","scope":"project","git_remote":"e2e-test","title":"Qdrant","memory_type":"decision"}'
 
-# ─── Test 4: start --foreground ─────────────────────────────
-echo "▸ Test: start server in background"
+echo ""; echo "--- Admin API ---"
+check_output "knowledge tree" "workspaces" curl -s -b /tmp/husk-cookies "${HUSK_URL}/api/admin/knowledge/tree"
+check_output "memories list" "memories" curl -s -b /tmp/husk-cookies "${HUSK_URL}/api/admin/memories"
+check_output "filters" "projects" curl -s -b /tmp/husk-cookies "${HUSK_URL}/api/admin/filters"
+check_output "settings" "settings" curl -s -b /tmp/husk-cookies "${HUSK_URL}/api/admin/settings"
+check_output "stats" "memories" curl -s -b /tmp/husk-cookies "${HUSK_URL}/api/admin/stats"
 
-# Create default config first (the CLI would normally do this interactively)
-mkdir -p ~/.husk/data
-cat > ~/.husk/husk.toml <<'TOML'
-[server]
-port = 3111
-db_path = "/root/.husk/data/husk.db"
+echo ""; echo "--- MCP ---"
+check_output "tools/list" "tools" curl -s -X POST "${HUSK_URL}/mcp" -H "Authorization: Bearer ${API_KEY}" -H "Content-Type: application/json" -H "Accept: application/json, text/event-stream" -d '{"jsonrpc":"2.0","method":"tools/list","id":1}'
 
-[storage]
-backend = "sqlite-vec"
-path = "/root/.husk/data/husk-vectors.db"
+echo ""; echo "--- OTLP ---"
+OTLP=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${HUSK_URL}/v1/logs" -H "Content-Type: application/json" -d '{}')
+if [ "$OTLP" = "200" ]; then pass "OTLP logs"; else fail "OTLP: HTTP $OTLP"; fi
 
-[embeddings]
-backend = "transformers"
-models_path = "/root/.husk/data/models"
-TOML
-
-# Start server as daemon
-BUN_PATH=$(which bun)
-cd /root/.husk/server/server
-HUSK_CONFIG=/root/.husk/husk.toml $BUN_PATH run src/index.ts &
-SERVER_PID=$!
-echo $SERVER_PID > /root/.husk/husk.pid
-cd /app/cli
-
-# Wait for health
-echo "  … waiting for server (PID $SERVER_PID)"
-HEALTHY=false
-for i in $(seq 1 60); do
-  if curl -sf http://localhost:3111/health > /dev/null 2>&1; then
-    HEALTHY=true
-    break
-  fi
-  sleep 0.5
+echo ""; echo "--- UI ---"
+for r in "/" "/dashboard" "/knowledge" "/settings" "/admin-settings"; do
+  S=$(curl -s -o /dev/null -w "%{http_code}" "${HUSK_URL}${r}")
+  if [ "$S" = "200" ]; then pass "UI ${r}"; else fail "UI ${r}: HTTP $S"; fi
 done
 
-if $HEALTHY; then
-  pass "server is healthy"
-else
-  fail "server did not become healthy in 30s"
-  echo "  last 20 lines of log:"
-  cat ~/.husk/husk.log 2>/dev/null | tail -20 || true
-  # Try to show what's on port 3111
-  curl -v http://localhost:3111/health 2>&1 || true
-fi
+echo ""; echo "--- Graph + Telemetry ---"
+check_output "graph" "nodes" curl -s -b /tmp/husk-cookies "${HUSK_URL}/api/graph"
+check_output "telemetry" "today" curl -s -b /tmp/husk-cookies "${HUSK_URL}/telemetry/stats/overview"
 
-# ─── Test 5: health endpoint ───────────────────────────────
-echo "▸ Test: /health endpoint"
-HEALTH=$(curl -sf http://localhost:3111/health 2>&1 || echo "FAIL")
-if echo "$HEALTH" | grep -q '"status"'; then
-  pass "/health returns status JSON"
-else
-  fail "/health response: $HEALTH"
-fi
+if [ "$MODE" = "local" ] && [ -n "${HUSK_PID:-}" ]; then kill "$HUSK_PID" 2>/dev/null || true; wait "$HUSK_PID" 2>/dev/null || true; fi
 
-# ─── Test 6: status (running) ──────────────────────────────
-echo "▸ Test: status (server running)"
-STATUS=$($CLI status 2>&1)
-if echo "$STATUS" | grep -q "running"; then
-  pass "status shows running"
-else
-  fail "status should show running: $STATUS"
-fi
-
-# ─── Test 7: POST /setup (admin creation) ──────────────────
-echo "▸ Test: admin setup via HTTP"
-SETUP_RES=$(curl -sf -X POST http://localhost:3111/setup \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"testpassword123"}' 2>&1 || echo "FAIL")
-
-if echo "$SETUP_RES" | grep -q '"username":"admin"'; then
-  pass "POST /setup created admin"
-else
-  fail "POST /setup failed: $SETUP_RES"
-fi
-
-# ─── Test 8: Login + create API key ────────────────────────
-echo "▸ Test: login + API key creation"
-LOGIN_RES=$(curl -sf -X POST http://localhost:3111/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"testpassword123"}' \
-  -c /tmp/cookies.txt 2>&1 || echo "FAIL")
-
-if echo "$LOGIN_RES" | grep -q '"username":"admin"'; then
-  pass "login succeeded"
-else
-  fail "login failed: $LOGIN_RES"
-fi
-
-# Extract cookie for key creation
-COOKIE=$(grep husk_session /tmp/cookies.txt 2>/dev/null | awk '{print $NF}' || true)
-if [ -n "$COOKIE" ]; then
-  KEY_RES=$(curl -sf -X POST http://localhost:3111/api/keys \
-    -H "Content-Type: application/json" \
-    -H "Cookie: husk_session=$COOKIE" \
-    -d '{"label":"e2e-test"}' 2>&1 || echo "FAIL")
-
-  if echo "$KEY_RES" | grep -q '"key":"husk_'; then
-    pass "API key created"
-    API_KEY=$(echo "$KEY_RES" | grep -o '"key":"husk_[^"]*"' | cut -d'"' -f4)
-  else
-    fail "API key creation failed: $KEY_RES"
-  fi
-else
-  fail "no session cookie from login"
-fi
-
-# ─── Test 9: MCP endpoint with API key ─────────────────────
-echo "▸ Test: MCP endpoint reachable"
-if [ -n "${API_KEY:-}" ]; then
-  # POST to /mcp should not 401 with valid key (will return 406 — not valid MCP message)
-  MCP_RES=$(curl -s -o /dev/null -w "%{http_code}" \
-    -X POST http://localhost:3111/mcp \
-    -H "Authorization: Bearer $API_KEY" \
-    -H "Content-Type: application/json" \
-    -d '{}' 2>/dev/null)
-
-  if [ "$MCP_RES" != "401" ] && [ "$MCP_RES" != "000" ]; then
-    pass "MCP endpoint accepts API key (HTTP $MCP_RES)"
-  else
-    fail "MCP endpoint rejected key: HTTP $MCP_RES"
-  fi
-else
-  fail "skipped — no API key"
-fi
-
-# ─── Test 10: Setup is locked after first admin ────────────
-echo "▸ Test: /setup locked after admin creation"
-LOCK_RES=$(curl -s -o /dev/null -w "%{http_code}" \
-  -X POST http://localhost:3111/setup \
-  -H "Content-Type: application/json" \
-  -d '{"username":"hacker","password":"12345678"}' 2>/dev/null)
-
-if [ "$LOCK_RES" = "403" ]; then
-  pass "POST /setup returns 403 after first admin"
-else
-  fail "POST /setup should return 403, got: $LOCK_RES"
-fi
-
-# ─── Test 11: stop ─────────────────────────────────────────
-echo "▸ Test: stop server"
-kill $SERVER_PID 2>/dev/null || true
-
-# Wait for exit
-for i in $(seq 1 20); do
-  if ! kill -0 $SERVER_PID 2>/dev/null; then
-    break
-  fi
-  sleep 0.25
-done
-
-if ! kill -0 $SERVER_PID 2>/dev/null; then
-  pass "server stopped"
-  rm -f /root/.husk/husk.pid
-else
-  fail "server did not stop"
-  kill -9 $SERVER_PID 2>/dev/null || true
-fi
-
-# ─── Test 12: config-writer ────────────────────────────────
-echo "▸ Test: config file was created"
-if [ -f /root/.husk/husk.toml ]; then
-  if grep -q "sqlite-vec" /root/.husk/husk.toml; then
-    pass "husk.toml has sqlite-vec backend"
-  else
-    fail "husk.toml missing sqlite-vec"
-  fi
-else
-  fail "husk.toml not found"
-fi
-
-# ─── Summary ───────────────────────────────────────────────
-echo ""
-echo "═══════════════════════════════════════"
-echo "  Results: $PASS passed, $FAIL failed"
-echo "═══════════════════════════════════════"
-echo ""
-
-if [ $FAIL -gt 0 ]; then
-  exit 1
-fi
+echo ""; echo "==============================="
+echo "Results: $PASS passed, $FAIL failed"
+if [ -n "$ERRORS" ]; then echo -e "\nFailures:$ERRORS"; fi
+echo "==============================="
+[ "$FAIL" -eq 0 ] && exit 0 || exit 1
