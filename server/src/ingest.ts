@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { bearerKeyMiddleware } from "./auth.js";
 import { classifyMemory, slugify } from "./compression.js";
 import {
+	MEMORY_TYPES,
 	createMemory,
 	generateUniqueSlug,
 	getConfigWithEnv,
@@ -350,8 +351,7 @@ ingest.post("/", async (c) => {
 	if (body.memory_type && !isValidMemoryType(body.memory_type)) {
 		return c.json(
 			{
-				error:
-					"Invalid memory_type. Must be one of: decision, solution, lesson, fact, convention, goal.",
+				error: `Invalid memory_type. Must be one of: ${MEMORY_TYPES.join(", ")}.`,
 			},
 			400,
 		);
