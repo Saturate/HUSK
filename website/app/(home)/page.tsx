@@ -8,7 +8,6 @@ export default function HomePage() {
 			<NeuronBackground />
 
 			<div className="pointer-events-none relative z-10 mx-auto max-w-2xl text-center">
-				<HuskLogo className="mx-auto mb-4 size-16" />
 				<h1 className="mb-4 text-5xl font-bold tracking-tight sm:text-6xl">
 					HUSK
 				</h1>
