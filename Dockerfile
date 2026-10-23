@@ -1,5 +1,5 @@
 # ── Stage 1: Install + Build ──────────────────────────────────
-FROM oven/bun:1 AS build
+FROM oven/bun:1.4.4 AS build
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ COPY server/ server/
 RUN cd server && bun run build:ui
 
 # ── Stage 2: Production-only deps ────────────────────────────
-FROM oven/bun:1 AS deps
+FROM oven/bun:1.4.4 AS deps
 
 WORKDIR /app
 
@@ -40,7 +40,7 @@ COPY website/package.json website/package.json
 RUN bun install --frozen-lockfile --production
 
 # ── Stage 3: Production (Alpine) ─────────────────────────────
-FROM oven/bun:1-alpine
+FROM oven/bun:1.4.4-alpine
 
 RUN addgroup -S husk && adduser -S husk -G husk && apk add --no-cache su-exec
 
