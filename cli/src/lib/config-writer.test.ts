@@ -95,7 +95,7 @@ describe("writeConfig / readConfig", () => {
 	test("readConfig parses valid TOML that doesn't match HuskConfig shape", () => {
 		const configPath = join(dir, "weird.toml");
 		writeFileSync(configPath, '[random]\nkey = "value"');
-		const result = readConfig(configPath);
+		const result: unknown = readConfig(configPath);
 		// No runtime validation — returns whatever TOML parsed
 		expect(result).toEqual({ random: { key: "value" } });
 	});

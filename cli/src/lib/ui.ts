@@ -12,10 +12,7 @@ export function banner() {
 	p.intro(`HUSK v${VERSION} — Memory layer for AI coding assistants`);
 }
 
-export function handleCancel(value: unknown): asserts value is Exclude<
-	typeof value,
-	symbol
-> {
+export function handleCancel<T>(value: T | symbol): asserts value is T {
 	if (p.isCancel(value)) {
 		p.cancel("Cancelled.");
 		process.exit(0);
