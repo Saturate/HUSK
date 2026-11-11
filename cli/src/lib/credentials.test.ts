@@ -55,10 +55,15 @@ const { isFirstRun, setupAdmin, readCredentials } = await import(
 	"./credentials.js"
 );
 
+// Bun's fetch type also carries preconnect, which a bare mock lacks.
+function mockFetch(impl: (input: string | URL | Request) => Promise<Response>) {
+	globalThis.fetch = Object.assign(mock(impl), { preconnect: fetch.preconnect });
+}
+
 describe("isFirstRun", () => {
 	test("returns true on 503", async () => {
 		const originalFetch = globalThis.fetch;
-		globalThis.fetch = mock(() =>
+		mockFetch(() =>
 			Promise.resolve(new Response(null, { status: 503 })),
 		);
 		try {
@@ -70,7 +75,7 @@ describe("isFirstRun", () => {
 
 	test("returns false on 200", async () => {
 		const originalFetch = globalThis.fetch;
-		globalThis.fetch = mock(() =>
+		mockFetch(() =>
 			Promise.resolve(new Response(null, { status: 200 })),
 		);
 		try {
@@ -82,7 +87,7 @@ describe("isFirstRun", () => {
 
 	test("returns false on 401", async () => {
 		const originalFetch = globalThis.fetch;
-		globalThis.fetch = mock(() =>
+		mockFetch(() =>
 			Promise.resolve(new Response(null, { status: 401 })),
 		);
 		try {
@@ -94,7 +99,7 @@ describe("isFirstRun", () => {
 
 	test("returns false on network error", async () => {
 		const originalFetch = globalThis.fetch;
-		globalThis.fetch = mock(() => Promise.reject(new Error("ECONNREFUSED")));
+		mockFetch(() => Promise.reject(new Error("ECONNREFUSED")));
 		try {
 			expect(await isFirstRun("http://localhost:3000")).toBe(false);
 		} finally {
@@ -152,7 +157,7 @@ describe("setupAdmin", () => {
 	test("chains /setup → /auth/login → /api/keys correctly", async () => {
 		const calls: string[] = [];
 
-		globalThis.fetch = mock((url: string | URL | Request) => {
+		mockFetch((url: string | URL | Request) => {
 			const urlStr = url.toString();
 			calls.push(urlStr);
 
@@ -199,7 +204,7 @@ describe("setupAdmin", () => {
 	});
 
 	test("saves credentials to disk", async () => {
-		globalThis.fetch = mock((url: string | URL | Request) => {
+		mockFetch((url: string | URL | Request) => {
 			const urlStr = url.toString();
 			if (urlStr.endsWith("/setup")) {
 				return Promise.resolve(
@@ -237,7 +242,7 @@ describe("setupAdmin", () => {
 	});
 
 	test("throws on failed /setup", async () => {
-		globalThis.fetch = mock(() =>
+		mockFetch(() =>
 			Promise.resolve(
 				new Response(JSON.stringify({ error: "Already configured" }), {
 					status: 409,
@@ -251,7 +256,7 @@ describe("setupAdmin", () => {
 	});
 
 	test("throws when login fails", async () => {
-		globalThis.fetch = mock((url: string | URL | Request) => {
+		mockFetch((url: string | URL | Request) => {
 			const urlStr = url.toString();
 			if (urlStr.endsWith("/setup")) {
 				return Promise.resolve(
@@ -268,7 +273,7 @@ describe("setupAdmin", () => {
 	});
 
 	test("throws when no session cookie in login response", async () => {
-		globalThis.fetch = mock((url: string | URL | Request) => {
+		mockFetch((url: string | URL | Request) => {
 			const urlStr = url.toString();
 			if (urlStr.endsWith("/setup")) {
 				return Promise.resolve(
@@ -290,7 +295,7 @@ describe("setupAdmin", () => {
 	});
 
 	test("throws when /setup returns non-JSON body", async () => {
-		globalThis.fetch = mock(() =>
+		mockFetch(() =>
 			Promise.resolve(new Response("Internal Server Error", { status: 500 })),
 		);
 
