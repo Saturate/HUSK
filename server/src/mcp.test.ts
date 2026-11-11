@@ -137,6 +137,21 @@ describe("MCP server", () => {
 		setStorageProvider(null);
 	});
 
+	test("returns JSON-RPC parse error for malformed body", async () => {
+		const app = createTestApp();
+		await setupAdmin(app);
+		const apiKey = await createApiKey(app);
+
+		const res = await app.request("/mcp", {
+			method: "POST",
+			headers: { Authorization: `Bearer ${apiKey}`, ...MCP_HEADERS },
+			body: "{not json",
+		});
+		expect(res.status).toBe(400);
+		const body = (await res.json()) as JsonRpcResponse;
+		expect(body.error?.code).toBe(-32700);
+	});
+
 	test("rejects missing auth", async () => {
 		const app = createTestApp();
 		await setupAdmin(app);

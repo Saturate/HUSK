@@ -1142,12 +1142,30 @@ export function mountMcp(app: Hono) {
 			return c.json({ error: result.error }, 401);
 		}
 
+		// SDK >=1.31 streams the body itself and Bun's reader.releaseLock() throws after a full
+		// read when served through this app, so Hono parses it and the SDK skips the stream.
+		let parsedBody: unknown;
+		if (c.req.method === "POST") {
+			try {
+				parsedBody = await c.req.json();
+			} catch {
+				return c.json(
+					{
+						jsonrpc: "2.0",
+						error: { code: -32700, message: "Parse error: Invalid JSON" },
+						id: null,
+					},
+					400,
+				);
+			}
+		}
+
 		const server = createMcpServer(result.key);
 		const transport = new WebStandardStreamableHTTPServerTransport({ enableJsonResponse: true });
 		await server.connect(transport);
 
 		try {
-			return await transport.handleRequest(c.req.raw);
+			return await transport.handleRequest(c.req.raw, { parsedBody });
 		} finally {
 			await transport.close();
 			await server.close();

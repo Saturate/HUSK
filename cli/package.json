@@ -32,7 +32,7 @@
 	"dependencies": {
 		"@clack/prompts": "^0.10",
 		"smol-toml": "^1.6.0",
-		"zod": "^3.24"
+		"zod": "^4.6.7"
 	},
 	"devDependencies": {
 		"@types/node": "^22",
