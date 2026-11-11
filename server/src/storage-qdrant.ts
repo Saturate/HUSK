@@ -59,14 +59,14 @@ export class QdrantStorageProvider implements StorageProvider {
 			must.push({ key: "memory_type", match: { value: filter.memory_type } });
 		}
 
-		const results = await client.search(COLLECTION_NAME, {
-			vector,
+		const { points } = await client.query(COLLECTION_NAME, {
+			query: vector,
 			limit,
 			filter: must.length > 0 ? { must } : undefined,
 			with_payload: true,
 		});
 
-		return results.map((r) => ({
+		return points.map((r) => ({
 			id: String(r.id),
 			score: r.score,
 			payload: (r.payload ?? {}) as Record<string, unknown>,

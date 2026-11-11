@@ -458,7 +458,7 @@ invites.get("/", jwtMiddleware, requireRole("admin"), (c) => {
 
 invites.delete("/:id", jwtMiddleware, requireRole("admin"), (c) => {
 	const id = c.req.param("id");
-	if (!deleteInvite(id)) {
+	if (!id || !deleteInvite(id)) {
 		return c.json({ error: "Invite not found." }, 404);
 	}
 	return c.json({ id, deleted: true });
