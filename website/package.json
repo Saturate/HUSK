@@ -4,9 +4,8 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port 3001",
-		"build": "next build",
-		"start": "next start",
-		"postinstall": "fumadocs-mdx"
+		"build": "fumadocs-mdx && next build",
+		"start": "next start"
 	},
 	"dependencies": {
 		"@react-three/drei": "^10",
